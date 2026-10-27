@@ -137,7 +137,7 @@ try {
   check(true, 'search highlights the match')
   await a.page.keyboard.press('Escape')
 
-  // --- settings, themes, help ---------------------------------------------------------
+  // --- settings and themes ------------------------------------------------------------
   await button(a.page, 'Nastavení').click()
   await shot(a.page, '07-settings-profile')
   await a.page.getByRole('tab', { name: 'Vzhled' }).click()
@@ -153,10 +153,6 @@ try {
   }
   await a.page.evaluate(() => window.okfetch.updateSettings({ theme: 'opikula' }))
   await a.page.reload()
-  await a.page.locator('.help-button').click()
-  await a.page.getByText('Nápověda OKfetch – Windows').waitFor()
-  await shot(a.page, '11-help')
-  await a.page.keyboard.press('Escape')
 
   console.log(`SMOKE OK – screenshots in ${shots}`)
 } catch (error) {

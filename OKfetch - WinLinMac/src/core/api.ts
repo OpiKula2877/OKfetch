@@ -74,7 +74,8 @@ export function createHandlers(host: ApiHost): ApiHandlers {
     declineInvite: (id) => host.core().groups.decline(String(id)),
 
     getMessages: (chatId) => host.core().messages.list(String(chatId)),
-    sendMessage: (chatId, html) => host.core().messages.send(String(chatId), String(html)),
+    sendMessage: (chatId, html, replyTo) =>
+      host.core().messages.send(String(chatId), String(html), replyTo === undefined || replyTo === null ? undefined : String(replyTo)),
     sendTyping: (chatId) => host.core().messages.typing(String(chatId)),
     markRead: (chatId) => host.core().messages.markRead(String(chatId)),
     deleteMessages: (chatId, ids, scope) =>

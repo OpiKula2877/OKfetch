@@ -27,6 +27,8 @@ export interface StoredMessage {
   /** Outgoing: the peer has read it. Incoming: I have read it. */
   read: boolean
   file?: StoredFile
+  /** The message this one answers: `{ id, from, text }` as JSON (ciphertext in encrypted chats). */
+  quote?: string
 }
 
 export interface MessagePatch {

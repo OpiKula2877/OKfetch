@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { OFFLINE_CHAR_LIMIT, isEmptyMessage, textLength } from '../../../shared/text'
+import type { MessageView } from '../../../shared/model'
+import { OFFLINE_CHAR_LIMIT, isEmptyMessage, preview, textLength } from '../../../shared/text'
 import { api } from '../api'
-import { Icon } from '../components/Icon'
+import { Icon, IconButton } from '../components/Icon'
 import { useApp } from '../context'
 import { RichEditor, type RichEditorHandle } from '../editor/RichEditor'
 
@@ -14,9 +15,13 @@ interface Props {
   phone?: boolean
   draft?: string
   onDraftUsed?: () => void
+  /** The message the next message answers (shown above the text). */
+  replyTo?: MessageView | null
+  onCancelReply?: () => void
+  onSent?: () => void
 }
 
-export function Composer({ chatId, someoneOffline, canAttach, phone = false, draft, onDraftUsed }: Props) {
+export function Composer({ chatId, someoneOffline, canAttach, phone = false, draft, onDraftUsed, replyTo, onCancelReply, onSent }: Props) {
   const { t, notify } = useApp()
   const editor = useRef<RichEditorHandle>(null)
   const [html, setHtml] = useState('')
@@ -44,17 +49,23 @@ export function Composer({ chatId, someoneOffline, canAttach, phone = false, dra
     return () => window.removeEventListener('keydown', onKey)
   }, [attachMenu])
 
+  // Answering a message: the text goes into the composer, the keyboard comes up on the phone.
+  useEffect(() => {
+    if (replyTo) editor.current?.focus()
+  }, [replyTo])
+
   const send = useCallback(async () => {
     const current = editor.current?.html() ?? ''
     if (isEmptyMessage(current)) return
-    const result = await api.sendMessage(chatId, current)
+    const result = await api.sendMessage(chatId, current, replyTo?.id)
     if (result.ok) {
       editor.current?.clear()
+      onSent?.()
       if (!phone) editor.current?.focus()
     } else {
       notify(t(`chat.send_error.${result.reason}`), true)
     }
-  }, [chatId, notify, t, phone])
+  }, [chatId, notify, t, phone, replyTo, onSent])
 
   const changed = (value: string): void => {
     setHtml(value)
@@ -73,6 +84,15 @@ export function Composer({ chatId, someoneOffline, canAttach, phone = false, dra
 
   return (
     <div className={`composer ${phone ? 'phone-composer' : ''}`}>
+      {replyTo && (
+        <div className="reply-bar">
+          <div className="reply-bar-text">
+            <div className="quote-name">{replyTo.mine ? t('chat.reply_me') : replyTo.fromName}</div>
+            <div className="quote-text">{replyTo.file ? replyTo.file.name : preview(replyTo.html, 120)}</div>
+          </div>
+          <IconButton icon="close" label={t('chat.reply_cancel')} size={16} onClick={onCancelReply} />
+        </div>
+      )}
       <RichEditor ref={editor} onChange={changed} onEnter={phone ? undefined : () => void send()} placeholder={t('chat.placeholder')} showToolbar={!phone || formatting} />
       <div className="composer-bar">
         {phone && (

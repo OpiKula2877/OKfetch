@@ -137,8 +137,10 @@ export function installWebFake(): void {
     acceptInvite: () => true,
     declineInvite: () => undefined,
     getMessages: (chatId: string) => state.messages[chatId] ?? [],
-    sendMessage(chatId: string, html: string) {
-      const sent = message(chatId, ME, html, 0, { status: 'delivered' })
+    sendMessage(chatId: string, html: string, replyTo?: string) {
+      const target = replyTo ? (state.messages[chatId] ?? []).find((m) => m.id === replyTo) : undefined
+      const reply = target ? { id: target.id, from: target.from, fromName: target.mine ? '' : target.fromName, text: target.html.replace(/<[^>]+>/g, '').slice(0, 200) } : undefined
+      const sent = message(chatId, ME, html, 0, { status: 'delivered', reply })
       state.messages[chatId] = [...(state.messages[chatId] ?? []), sent]
       chatChanged(chatId)
       return { ok: true, id: sent.id }

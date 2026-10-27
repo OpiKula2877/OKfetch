@@ -1,6 +1,6 @@
 {
   "name": "okfetch-worklet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "OKfetch core for the Android app: runs in a Bare Kit worklet (built by scripts/build-worklet.mjs)",
   "author": "OpiKula",

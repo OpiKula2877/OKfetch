@@ -131,7 +131,8 @@ export interface OkfetchApi {
 
   // chats
   getMessages(chatId: string): Promise<MessageView[]>
-  sendMessage(chatId: string, html: string): Promise<SendResult>
+  /** `replyTo`: the message this one answers (a message of the same chat). */
+  sendMessage(chatId: string, html: string, replyTo?: string): Promise<SendResult>
   sendTyping(chatId: string): void
   markRead(chatId: string): Promise<void>
   deleteMessages(chatId: string, ids: string[], scope: 'me' | 'both'): Promise<{ deleted: number; skipped: number }>

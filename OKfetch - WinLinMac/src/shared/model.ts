@@ -1,7 +1,8 @@
 // View models shared by the main process and the renderer.
 
 export type ChatKind = 'enc' | 'plain'
-export type FileState = 'offered' | 'accepted' | 'transferring' | 'done' | 'rejected' | 'canceled' | 'failed'
+/** `paused`: the connection went away; the transfer goes on when the peer is back. */
+export type FileState = 'offered' | 'accepted' | 'transferring' | 'paused' | 'done' | 'rejected' | 'canceled' | 'failed'
 export type MessageStatus = 'pending' | 'delivered' | 'read'
 
 /** Chat ids: `<identifier>:enc`, `<identifier>:plain` for contacts, `g:<id>` for groups. */
@@ -95,8 +96,18 @@ export interface MessageView {
   /** Incoming and not read by me yet. */
   unread: boolean
   file?: FileView
+  /** The message this one answers. */
+  reply?: ReplyView
   /** Encrypted message that cannot be decrypted (wrong or missing key). */
   broken?: boolean
+}
+
+export interface ReplyView {
+  id: string
+  from: string
+  /** Empty when the quoted message is mine. */
+  fromName: string
+  text: string
 }
 
 export interface BlockedView {

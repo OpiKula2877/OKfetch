@@ -258,6 +258,7 @@ export class Core {
     if (this.isContact(pub) || this.isMember(pub)) {
       this.sendHello(peer)
       for (const entry of this.state.outbox) if (entry.peer === pub) peer.send(entry.frame)
+      this.transfers.onPeerOpen(peer)
     } else if (!this.hasOutgoing(pub)) {
       this.contacts.challenge(peer)
     }
@@ -273,7 +274,7 @@ export class Core {
 
   private handleClose(peer: Peer): void {
     this.contacts.onClose(peer.pub)
-    this.transfers.onPeerClosed(peer.pub)
+    this.transfers.onPeerClosed(peer)
     if (!this.closed) {
       this.emit({ type: 'contacts' })
       this.emit({ type: 'groups' })
@@ -343,6 +344,12 @@ export class Core {
         break
       case 'file_done':
         this.transfers.onDone(peer, ctrl)
+        break
+      case 'file_resume':
+        void this.transfers.onResume(peer, ctrl)
+        break
+      case 'file_position':
+        this.transfers.onPosition(peer, ctrl)
         break
       case 'group_invite':
         ack = this.groups.onInvite(peer, ctrl)

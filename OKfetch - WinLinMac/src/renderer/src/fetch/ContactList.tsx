@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { contactChatId, groupChatId, type ChatKind, type ContactView, type GroupView } from '../../../shared/model'
 import { Avatar } from '../components/Avatar'
 import { ContextMenu, type MenuItem } from '../components/ContextMenu'
-import { Icon } from '../components/Icon'
+import { Icon, IconButton } from '../components/Icon'
 import { useApp } from '../context'
+import { usePhone } from '../mobile/phone'
 
 interface Props {
   contacts: ContactView[]
@@ -30,6 +31,7 @@ interface Menu {
 
 export function ContactList(props: Props) {
   const { t } = useApp()
+  const phone = usePhone()
   const [menu, setMenu] = useState<Menu | null>(null)
   const needle = props.query.trim().toLocaleLowerCase()
   const contacts = props.contacts
@@ -37,20 +39,28 @@ export function ContactList(props: Props) {
     .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name))
   const groups = props.groups.filter((g) => g.state === 'active' && (!needle || g.name.toLocaleLowerCase().includes(needle)))
 
-  const contactMenu = (event: React.MouseEvent, contact: ContactView): void => {
+  const contactItems = (contact: ContactView): MenuItem[] => [
+    { label: t('contact.rename'), onSelect: () => props.onRename(contact) },
+    { label: t('contact.icon'), onSelect: () => props.onIcon(contact) },
+    { label: t('contact.icon_remove'), onSelect: () => props.onIconRemove(contact) },
+    { label: t('contact.verify'), onSelect: () => props.onVerify(contact) },
+    contact.blocked ? { label: t('contact.unblock'), onSelect: () => props.onUnblock(contact), separatorBefore: true } : { label: t('contact.block'), onSelect: () => props.onBlock(contact), separatorBefore: true },
+    { label: t('contact.remove'), onSelect: () => props.onRemove(contact), danger: true }
+  ]
+  const groupItems = (group: GroupView): MenuItem[] => [
+    { label: t('group.settings'), onSelect: () => props.onGroupSettings(group) },
+    { label: t('group.leave'), onSelect: () => props.onLeaveGroup(group), danger: true, separatorBefore: true }
+  ]
+
+  // Desktop: right-click on the row. Phone: a gear button beside the row (a long press opens nothing there).
+  const rightClick = (event: React.MouseEvent, items: MenuItem[]): void => {
     event.preventDefault()
-    setMenu({
-      x: event.clientX,
-      y: event.clientY,
-      items: [
-        { label: t('contact.rename'), onSelect: () => props.onRename(contact) },
-        { label: t('contact.icon'), onSelect: () => props.onIcon(contact) },
-        { label: t('contact.icon_remove'), onSelect: () => props.onIconRemove(contact) },
-        { label: t('contact.verify'), onSelect: () => props.onVerify(contact) },
-        contact.blocked ? { label: t('contact.unblock'), onSelect: () => props.onUnblock(contact), separatorBefore: true } : { label: t('contact.block'), onSelect: () => props.onBlock(contact), separatorBefore: true },
-        { label: t('contact.remove'), onSelect: () => props.onRemove(contact), danger: true }
-      ]
-    })
+    setMenu({ x: event.clientX, y: event.clientY, items })
+  }
+  const gearClick = (event: React.MouseEvent<HTMLButtonElement>, items: MenuItem[]): void => {
+    event.stopPropagation()
+    const box = event.currentTarget.getBoundingClientRect()
+    setMenu({ x: box.right, y: box.bottom, items })
   }
 
   const kindRow = (contact: ContactView, kind: ChatKind) => {
@@ -70,7 +80,7 @@ export function ContactList(props: Props) {
       <div className="section-title muted">{t('list.contacts')}</div>
       {contacts.length === 0 && <div className="empty-hint muted">{t(needle ? 'list.no_match' : 'list.no_contacts')}</div>}
       {contacts.map((contact) => (
-        <div key={contact.pub} className={`contact ${contact.blocked ? 'blocked' : ''}`} onContextMenu={(e) => contactMenu(e, contact)}>
+        <div key={contact.pub} className={`contact ${contact.blocked ? 'blocked' : ''}`} onContextMenu={phone ? undefined : (e) => rightClick(e, contactItems(contact))}>
           <div className="contact-head">
             <Avatar name={contact.name} src={contact.avatar} online={contact.online} />
             <div className="contact-names">
@@ -80,6 +90,7 @@ export function ContactList(props: Props) {
               </div>
               <div className="item-sub">{contact.blocked ? t('contact.blocked') : contact.online && contact.via === 'relay' ? t('status.online_relay') : t(contact.online ? 'status.online' : 'status.offline')}</div>
             </div>
+            {phone && <IconButton icon="gear" label={t('list.options')} size={18} className="row-options" onClick={(e) => gearClick(e, contactItems(contact))} />}
           </div>
           {!contact.blocked && (
             <div className="kind-rows">
@@ -98,17 +109,7 @@ export function ContactList(props: Props) {
             key={group.id}
             className={`contact group-row ${props.activeChat === chatId ? 'selected' : ''}`}
             onClick={() => props.onOpen(chatId)}
-            onContextMenu={(event) => {
-              event.preventDefault()
-              setMenu({
-                x: event.clientX,
-                y: event.clientY,
-                items: [
-                  { label: t('group.settings'), onSelect: () => props.onGroupSettings(group) },
-                  { label: t('group.leave'), onSelect: () => props.onLeaveGroup(group), danger: true, separatorBefore: true }
-                ]
-              })
-            }}
+            onContextMenu={phone ? undefined : (event) => rightClick(event, groupItems(group))}
           >
             <div className="contact-head">
               <Avatar name={group.name} group size={34} />
@@ -119,6 +120,7 @@ export function ContactList(props: Props) {
                 <div className="item-sub">{t('group.members_online', { online: group.members.filter((m) => m.online).length, total: group.members.length })}</div>
               </div>
               {group.unread > 0 && <span className="badge">{group.unread}</span>}
+              {phone && <IconButton icon="gear" label={t('list.options')} size={18} className="row-options" onClick={(e) => gearClick(e, groupItems(group))} />}
             </div>
           </div>
         )

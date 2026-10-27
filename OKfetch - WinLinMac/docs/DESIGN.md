@@ -1,6 +1,6 @@
 # OKfetch – technický návrh
 
-Tento dokument je pro vývojáře. V nápovědě aplikace se nezobrazuje. Zadání je v `../../OKfetch.md`.
+Tento dokument je pro vývojáře a v aplikaci se nezobrazuje. Zadání je v `../../OKfetch.md`.
 
 ## Procesy
 
@@ -28,7 +28,7 @@ Když jsou obě strany za NAT s náhodnými porty, HyperDHT díru neprorazí a n
 - Paket = efemérní událost kind `21430` (NIP-01, podpis BIP-340 náhodným klíčem, nový při každém spuštění, nesouvisí s identitou). Adresát se hledá podle tagu `#p` = BLAKE2b(`okfetch/v1/mailbox` ‖ veřejný klíč), takže identifikátor na relay není vidět.
 - Obsah je zapečetěný XChaCha20-Poly1305 klíčem ze statického X25519 DH (klíče převedené z Ed25519 identit), AD = `okfetch/v1/relay` ‖ od ‖ komu. Relay ani nikdo jiný ho nepřečte ani nepodvrhne.
 - `RelayLink` je virtuální spojení se stejným rozhraním jako Noise stream: pořadová čísla, přerovnání, zahození duplikátů, zavření po díře delší než 10 s, `hello` pingy, keepalive 25 s, nečinnost 75 s, bloky 16 KiB a zpětný tlak (fronta 48/12).
-- `RelayTransport` posílá na až 3 relay zároveň (stejný paket, příjemce duplikáty zahodí), drží rychlostní limit, při výpadku se znovu připojí s odstupem a relay, které selhává, na chvíli vynechá.
+- `RelayTransport` posílá na až 3 relay zároveň (stejný paket, příjemce duplikáty zahodí), drží rychlostní limit, při výpadku se znovu připojí s odstupem (nejdéle 60 s, aby se po návratu kontaktu nečekalo minuty) a relay, které selhává, na chvíli vynechá.
 - Telefon (Bare) používá `bare-ws`, počítač globální `WebSocket` z Node/Electronu.
 
 ## Kdo smí co (`controller.ts`, `handleFrame`)
@@ -77,8 +77,8 @@ Když jsou obě strany za NAT s náhodnými porty, HyperDHT díru neprorazí a n
 2. Příjemce odpoví `file_accept` nebo `file_reject {feedback}`.
 3. Odesílatel čte po 64 KiB a posílá bloky. `Peer.sendBlock` čeká na `drain`, když je buffer plný (zpětný tlak). V šifrovaném chatu se blok šifruje klíčem odvozeným z klíče chatu a id souboru, nonce je číslo bloku.
 4. Příjemce zapisuje do `.part`, průběžně počítá hash. Po `file_end` zkontroluje počet bloků, velikost a hash, přejmenuje soubor a odpoví `file_done`.
-5. Soubor smí být jen v `files/<chat>/<id>_<bezpečné jméno>`. Protokol `okfetch-file://f/…` obsluhuje jen soubory pod `files/` (`core/storage/safePath.ts`).
-6. Přenos, který běžel při ukončení, se zobrazí jako neúspěšný. Pokračování není.
+5. Soubor smí být jen v `files/<chat>/<id>_<bezpečné jméno>`. Protokol `okfetch-file://f/…` obsluhuje jen soubory pod `files/` (`core/storage/safePath.ts`). Odesílatel si kopii vybraného souboru ukládá sám do téhož místa, takže ji vidí ve svém chatu.
+6. Když spojení spadne nebo se aplikace ukončí, přenos se **pozastaví** (stav `paused`), nic se neselže a nemá časový limit. Příjemce nechá `.part` na disku. Po navázání spojení odesílatel pošle `file_resume`, příjemce odpoví `file_position {blocks}` (počet celých bloků v `.part`, useknutý rozpracovaný blok se zahodí) a odesílatel pokračuje od tohoto bloku. Pokud příjemce soubor už dokončil, odpoví `file_done` znovu, takže se ztracené potvrzení nedá ztratit.
 
 ## Skupiny
 

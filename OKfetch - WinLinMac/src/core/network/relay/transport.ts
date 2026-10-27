@@ -50,7 +50,9 @@ const SUBSCRIPTION = 'okfetch'
 const QUEUE_BUSY = 48
 const QUEUE_LOW = 12
 const SEEN_LIMIT = 4096
-const FAILED_RETRY_MS = [30_000, 60_000, 120_000, 300_000]
+// A peer that cannot be reached through the relays is tried again after these waits (the last one repeats): a peer
+// that comes back online is reached within a minute, so queued messages and transfers do not wait for minutes.
+const FAILED_RETRY_MS = [15_000, 30_000, 60_000]
 
 class RelayConnection {
   socket: RelaySocket | null = null
