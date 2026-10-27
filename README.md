@@ -2,7 +2,7 @@
 
 OKfetch je chat pro Windows, Linux, macOS a Android, ve kterém zprávy, soubory a skupiny putují přímo mezi zařízeními, bez serveru a bez účtu. Každý kontakt má šifrovaný i nešifrovaný chat, a když přímé spojení nejde, zprávy jdou šifrovaně přes veřejné Nostr relay.
 
-**Stažení:** `OKfetch-Setup.exe` pro Windows a `OKfetch.apk` pro Android najdete na [apps.opikula.dev](https://apps.opikula.dev). Instalačku si můžete sestavit i sami ze zdrojového kódu, viz [Instalace](#instalace-windows-linux-macos).
+**Stažení:** `OKfetch-Setup.exe` pro Windows a `OKfetch.apk` pro Android najdete na [store.opikula.dev](https://store.opikula.dev). Instalačku si můžete sestavit i sami ze zdrojového kódu, viz [Instalace](#instalace-windows-linux-macos).
 
 | Složka | Obsah |
 |---|---|
@@ -57,7 +57,7 @@ OKfetch je chat pro Windows, Linux, macOS a Android, ve kterém zprávy, soubory
 
 ### Možnost 1: stáhnout instalačku (Windows)
 
-Stáhněte `OKfetch-Setup.exe` na [apps.opikula.dev](https://apps.opikula.dev) a spusťte ho. Nic dalšího instalovat nemusíte, vše potřebné je uvnitř instalačky.
+Stáhněte `OKfetch-Setup.exe` na [store.opikula.dev](https://store.opikula.dev) a spusťte ho. Nic dalšího instalovat nemusíte, vše potřebné je uvnitř instalačky.
 
 ### Možnost 2: ze zdrojového kódu
 
@@ -89,7 +89,7 @@ Při prvním spuštění na Windows může Windows Defender Firewall zobrazit ok
 
 ## Instalace: Android
 
-1. Stáhněte [`OKfetch.apk`](OKfetch%20-%20Android/OKfetch.apk) do telefonu (Android 10 a novější), nebo ho stáhněte na [apps.opikula.dev](https://apps.opikula.dev).
+1. Stáhněte [`OKfetch.apk`](OKfetch%20-%20Android/OKfetch.apk) do telefonu (Android 10 a novější), nebo ho stáhněte na [store.opikula.dev](https://store.opikula.dev).
 2. Otevřete ho a povolte instalaci z neznámých zdrojů.
 3. Klepněte na Instalovat. Novější verzi nainstalujete stejně a data zůstanou.
 
