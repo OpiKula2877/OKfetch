@@ -1,14 +1,11 @@
 # OKfetch
-- OKfetch je jednoduchý chat pro Android, Windows, Linux a macOS, kde zprávy posíláš přímo kamarádovi bez serveru a bez registrace účtu. Každý kontakt má vlastní šifrovaný chat a v případě, že se zařízení neumí spojit přímo, zprávy bezpečně přejdou přes veřejné relay.
 
-## Instalace
+* OKfetch is a simple chat for Android, Windows, Linux, and macOS where you send messages directly to your friend without a server or account registration. Each contact has its own encrypted chat, and if the devices cannot connect directly, messages securely pass through public relays.
 
-1. Stáhněte instalační soubor OKfetch-Setup.exe pro Windows nebo OKfetch.apk pro Android ze stránky store.opikula.dev/app/okfetch.
+## Installation
 
-2. Na Windows spusťte stažený OKfetch-Setup.exe a dokončete instalaci (v případě upozornění na nepodepsaný instalátor klikněte na „Další informace“ a „Přesto spustit“).
-
-3. Na Androidu otevřete soubor OKfetch.apk, povolte v zařízení instalaci z neznámých zdrojů a potvrďte instalaci.
-
-4. Uživatelé systémů Linux a macOS mohou aplikaci sestavit ze zdrojových kódů stažením repozitáře přes Git a spuštěním příslošného sestavovacího příkazu (npm run dist:linux nebo npm run dist:mac) v prostředí Node.js 20+.
-
-5. Při prvním spuštění na Windows stačí ve Firewallu potvrdit tlačítko „Povolit přístup“ a nastavit v aplikaci své heslo pro příjem kontaktů.
+1. Download the `OKfetch-Setup.exe` file for Windows or `OKfetch.apk` for Android from [store.opikula.dev/app/okfetch](https://store.opikula.dev/app/okfetch/).
+2. On Windows, run the downloaded `OKfetch-Setup.exe` and complete the installation (if warned about an unsigned installer, click "More info" and then "Run anyway").
+3. On Android, open the `OKfetch.apk` file, allow installation from unknown sources on your device, and confirm the installation.
+4. Linux and macOS users can build the app from source by cloning the repository via Git and running the corresponding build command (`npm run dist:linux` or `npm run dist:mac`) in a Node.js 20+ environment.
+5. Upon first launch on Windows, simply click "Allow access" in the Firewall prompt and set your contact receiving password in the app.
