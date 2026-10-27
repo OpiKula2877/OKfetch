@@ -56,6 +56,19 @@ export type UiEvent =
   | { type: 'app'; status: AppStatus }
   /** Android: the settings changed (the Java host applies the lock, screenshots and the background service). */
   | { type: 'settings'; settings: Settings }
+  | { type: 'update'; state: UpdateState }
+
+/** The app's own update: the newest release is downloaded in the background and installed only when the user asks. */
+export interface UpdateState {
+  status: 'idle' | 'checking' | 'upToDate' | 'downloading' | 'ready' | 'error'
+  /** The running version. */
+  current: string
+  /** The version being downloaded or ready to install. */
+  latest?: string
+  /** Download progress, 0–100. */
+  progress?: number
+  error?: string
+}
 
 export type AppStatus =
   | { phase: 'starting' }
@@ -88,6 +101,10 @@ export interface OkfetchApi {
 
   getStatus(): Promise<AppStatus>
   onEvent(listener: (event: UiEvent) => void): () => void
+  /** The app's own update, Windows and Android (the browser has none): see renderer/src/updates.ts. */
+  updateState?(): Promise<UpdateState>
+  checkForUpdate?(): Promise<UpdateState>
+  installUpdate?(): Promise<boolean>
 
   // storage location
   pickFolder(): Promise<string | null>
@@ -143,6 +160,8 @@ export interface OkfetchApi {
   acceptFile(chatId: string, id: string): Promise<boolean>
   rejectFile(chatId: string, id: string, feedback?: string): Promise<boolean>
   cancelFile(chatId: string, id: string): Promise<boolean>
+  /** A transfer that waits for the peer: connect now, and go on from where it stopped. */
+  retryFile(chatId: string, id: string): Promise<boolean>
   openFile(chatId: string, id: string): Promise<void>
   showFile(chatId: string, id: string): Promise<void>
   /** Android: copy a received file to Downloads. */
@@ -175,13 +194,13 @@ export const API_METHODS = [
   'listContacts', 'listRequests', 'listBlocked', 'addContact', 'cancelRequest', 'acceptRequest', 'rejectRequest', 'blockPeer', 'unblockPeer',
   'renameContact', 'setContactIcon', 'verifyContact', 'getFingerprint', 'removeContact',
   'listGroups', 'createGroup', 'updateGroup', 'leaveGroup', 'acceptInvite', 'declineInvite',
-  'getMessages', 'sendMessage', 'sendTyping', 'markRead', 'deleteMessages', 'sendFile', 'sendPrepared', 'acceptFile', 'rejectFile', 'cancelFile', 'openFile', 'showFile',
+  'getMessages', 'sendMessage', 'sendTyping', 'markRead', 'deleteMessages', 'sendFile', 'sendPrepared', 'acceptFile', 'rejectFile', 'cancelFile', 'retryFile', 'openFile', 'showFile',
   'saveFile', 'shareFile', 'openExternal', 'copyText', 'getSettings', 'updateSettings', 'createBackup', 'restoreBackup', 'resetData'
 ] as const
 
 export type ApiMethod = (typeof API_METHODS)[number]
 
-type NotInvoked = 'platform' | 'onEvent' | 'onMaximized' | 'windowMinimize' | 'windowToggleMaximize' | 'windowClose'
+type NotInvoked = 'platform' | 'onEvent' | 'onMaximized' | 'windowMinimize' | 'windowToggleMaximize' | 'windowClose' | 'updateState' | 'checkForUpdate' | 'installUpdate'
 // Compile-time check: every invoked method of OkfetchApi is listed above.
 const _complete: Exclude<keyof OkfetchApi, NotInvoked | ApiMethod> extends never ? true : never = true
 void _complete

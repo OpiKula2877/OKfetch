@@ -226,7 +226,8 @@ export class TransferService {
     const ts = Date.now()
     this.core.chatLog(chatId).add({
       id, chatId, from: this.core.me, ts, lamport, body, enc, kind: 'file', waiting: [parsed.pub], read: false,
-      file: { state: 'offered', direction: 'out', rel }
+      // `source` lets the phone remove its copy in outgoing/ once this transfer is over (mobile/outgoing.ts).
+      file: { state: 'offered', direction: 'out', rel, source: path }
     })
     this.core.sendReliable(parsed.pub, { t: 'file_offer', rid: id, chat: parsed.kind, ts, lamport, meta: body, enc })
     this.core.chatChanged(chatId)
@@ -474,6 +475,34 @@ export class TransferService {
     })
     this.patch(chatId, id, { state: 'transferring' })
     peer.send({ t: 'file_position', id, blocks })
+  }
+
+  /** "Try to connect again": the peer is reached now and the transfer goes on from where it stopped. */
+  retry(chatId: string, id: string): boolean {
+    const parsed = parseChatId(chatId)
+    const message = this.core.chatLog(chatId).messages.get(id)
+    if (!parsed || parsed.type !== 'contact' || !message?.file) return false
+    if (this.effectiveState(id, message.file.state) !== 'paused') return false
+    this.core.net.reconnect(parsed.pub)
+    const peer = this.core.net.peer(parsed.pub)
+    if (peer) this.onPeerOpen(peer)
+    return true
+  }
+
+  /** Something is still being sent or received (or waits for the peer): the app stays in the tray instead of quitting. */
+  hasUnfinished(): boolean {
+    if (this.active.size > 0) return true
+    for (const contact of this.core.state.contacts) {
+      for (const kind of ['enc', 'plain'] as const) {
+        for (const message of this.core.chatLog(`${contact.pub}:${kind}`).messages.values()) {
+          const file = message.file
+          if (!file) continue
+          if (file.direction === 'out' && file.state === 'offered') return true
+          if (UNFINISHED.has(this.effectiveState(message.id, file.state))) return true
+        }
+      }
+    }
+    return false
   }
 
   // --- cancel and cleanup ------------------------------------------------------------------

@@ -205,6 +205,32 @@ describe('core', () => {
     expect(readFileSync(b.transfers.filePath(chatB, sent.id)!).equals(content)).toBe(true)
   }, 90_000)
 
+  it('a dropped file waits for the retry button, with no error, and goes on from where it stopped', async () => {
+    // The redial timer is far away: only the retry button brings the peer back in time.
+    const a = await Core.open({ root: dir(), bootstrap: net.bootstrap, kdf: FAST, retryMs: 60_000 })
+    const b = await Core.open({ root: dir(), bootstrap: net.bootstrap, kdf: FAST, retryMs: 60_000 })
+    cores.push(a, b)
+    await befriend(a, b)
+    const source = join(dir(), 'pausa.bin')
+    const content = randomBytes(16 * 1024 * 1024)
+    writeFileSync(source, content)
+    const chatA = contactChatId(b.me, 'enc')
+    const chatB = contactChatId(a.me, 'enc')
+    const sent = await a.transfers.sendFile(chatA, source)
+    if (!sent.ok) throw new Error('offer failed')
+    await until(() => b.messages.list(chatB).some((m) => m.file?.state === 'offered'))
+    expect(b.transfers.accept(chatB, sent.id)).toBe(true)
+    await until(() => (b.messages.list(chatB)[0].file?.done ?? 0) > 1024 * 1024)
+    a.net.peer(b.me)?.close()
+    await until(() => b.messages.list(chatB)[0].file?.state === 'paused')
+    expect(a.messages.list(chatA)[0].file?.state).toBe('paused')
+    expect(b.transfers.hasUnfinished()).toBe(true)
+    expect(b.transfers.retry(chatB, sent.id)).toBe(true)
+    await until(() => b.messages.list(chatB)[0].file?.state === 'done', 60_000)
+    await until(() => a.messages.list(chatA)[0].file?.state === 'done', 60_000)
+    expect(readFileSync(b.transfers.filePath(chatB, sent.id)!).equals(content)).toBe(true)
+  }, 120_000)
+
   it('answers a message: the reply quotes the message it answers, in an encrypted chat', async () => {
     const a = await node()
     const b = await node()

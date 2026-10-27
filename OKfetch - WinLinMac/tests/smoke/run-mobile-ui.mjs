@@ -141,7 +141,9 @@ try {
   await page.waitForFunction(() => window.__okfetchFake.calls.some((c) => c.method === 'sendMessage' && c.args[2]))
   await page.locator('.reply-bar').waitFor({ state: 'detached' })
   check(true, 'sending the reply closes the reply bar')
-  check(await page.locator('.message-row.mine .bubble-quote').count() >= 1, 'the reply shows the quoted message above its text')
+  // The message reaches the list a moment after the reply bar closes (the chat is read again), so wait for the quote.
+  await page.locator('.message-row.mine .bubble-quote').first().waitFor()
+  check(true, 'the reply shows the quoted message above its text')
 
   // Back: chat → list.
   await back()

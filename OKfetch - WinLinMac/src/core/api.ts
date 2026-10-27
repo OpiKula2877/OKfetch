@@ -89,6 +89,7 @@ export function createHandlers(host: ApiHost): ApiHandlers {
     acceptFile: (chatId, id) => host.core().transfers.accept(String(chatId), String(id)),
     rejectFile: (chatId, id, feedback) => host.core().transfers.reject(String(chatId), String(id), feedback === undefined ? '' : String(feedback)),
     cancelFile: (chatId, id) => host.core().transfers.cancel(String(chatId), String(id)),
+    retryFile: (chatId, id) => host.core().transfers.retry(String(chatId), String(id)),
     openFile: async (chatId, id) => {
       const path = host.core().transfers.filePath(String(chatId), String(id))
       if (!path) return

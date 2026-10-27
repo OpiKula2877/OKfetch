@@ -1,5 +1,5 @@
-// Copies of files the user sends from the phone: outgoing/<token>/<original name>. The core reads the copy when the
-// receiver accepts, which can be much later, so a copy stays while its offer waits or sends and goes once it is over.
+// Copies of files the user sends from the phone: outgoing/<token>/<original name>. The core copies the file when it is
+// offered and keeps its own copy; the host copy stays while the offer waits or sends and goes once it is over.
 
 const NEVER_OFFERED_MS = 3600_000
 

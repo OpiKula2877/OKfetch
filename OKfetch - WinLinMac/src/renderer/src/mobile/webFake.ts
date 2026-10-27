@@ -162,6 +162,7 @@ export function installWebFake(): void {
     acceptFile: () => true,
     rejectFile: () => true,
     cancelFile: () => true,
+    retryFile: () => true,
     openFile: () => undefined,
     showFile: () => undefined,
     saveFile: () => true,

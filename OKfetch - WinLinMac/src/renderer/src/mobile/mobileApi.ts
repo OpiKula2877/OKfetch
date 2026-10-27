@@ -7,12 +7,23 @@ import { decodeLine, encodeLine } from '../../../mobile/rpc'
 export interface LineChannel {
   send(line: string): void
   onLine(listener: (line: string) => void): void
+  /** Events from the native side that are not core lines (the app's own update). */
+  onNativeEvent?(listener: (event: UiEvent) => void): void
 }
 
 export function createMobileApi(channel: LineChannel, extras: Partial<OkfetchApi> = {}): OkfetchApi {
   let next = 0
   const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void }>()
   const listeners = new Set<(event: UiEvent) => void>()
+  const emit = (event: UiEvent): void => {
+    for (const listener of listeners) {
+      try {
+        listener(event)
+      } catch (error) {
+        console.error('[okfetch] event listener failed', error)
+      }
+    }
+  }
 
   channel.onLine((line) => {
     const message = decodeLine(line)
@@ -24,17 +35,12 @@ export function createMobileApi(channel: LineChannel, extras: Partial<OkfetchApi
       if (message.ok) waiting.resolve(message.result)
       else waiting.reject(new Error(message.error))
     } else if (message.t === 'event') {
-      for (const listener of listeners) {
-        try {
-          listener(message.event as UiEvent)
-        } catch (error) {
-          console.error('[okfetch] event listener failed', error)
-        }
-      }
+      emit(message.event as UiEvent)
     }
   })
+  channel.onNativeEvent?.(emit)
 
-  const call = (method: string, args: unknown[]): Promise<unknown> =>
+  const call =(method: string, args: unknown[]): Promise<unknown> =>
     new Promise((resolve, reject) => {
       const id = `w${next++}`
       pending.set(id, { resolve, reject })

@@ -170,6 +170,11 @@ export class RelayTransport {
     this.createLink(pub, true)
   }
 
+  /** Forget the waits after failed attempts for this peer (the user asked to connect now). */
+  resetBackoff(pub: string): void {
+    this.failed.delete(pub)
+  }
+
   disconnect(pub: string): void {
     this.failed.delete(pub)
     this.links.get(pub)?.destroy(true)

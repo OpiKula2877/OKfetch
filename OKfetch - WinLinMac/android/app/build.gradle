@@ -15,8 +15,8 @@ android {
         // Bare Kit (the runtime of the P2P core) needs Android 10.
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "1.1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // Phones (64 and 32 bit ARM) and the x86_64 emulator; -PokfetchAbi=arm64-v8a builds one ABI only.

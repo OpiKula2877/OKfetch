@@ -52,11 +52,15 @@ export function FileOfferCard({ message, done }: Props) {
       )
       break
     case 'paused':
+      // Not an error: the transfer waits for the connection and goes on from where it stopped.
       body = (
         <div className="file-progress">
           <span className="muted">{t('file.paused')}</span>
           <div className="row">
             <span className="muted grow">{formatSize(transferred)} / {formatSize(file.size)}</span>
+            <button type="button" onClick={() => void api.retryFile(chatId, message.id)}>
+              <Icon name="refresh" size={14} /> {t('file.retry')}
+            </button>
             <button type="button" className="link" onClick={() => void api.cancelFile(chatId, message.id)}>
               {t('file.cancel')}
             </button>

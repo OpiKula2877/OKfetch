@@ -18,6 +18,7 @@ import { registerIpc, type Host } from './ipc'
 import { createProtector } from './keyProtection'
 import { notify } from './notifications'
 import { AppTray } from './tray'
+import { Updater } from './updates'
 
 registerFileScheme()
 
@@ -139,6 +140,9 @@ function applyWindowSettings(previous: Settings): void {
   if (resolveFlags(previous).native_titlebar !== resolveFlags(settings).native_titlebar) recreateWindow()
 }
 
+// The app updates itself (Windows); the window gets the state as events.
+const updater = new Updater((state) => emitUi({ type: 'update', state }))
+
 const host: Host = {
   core() {
     if (!core) throw new Error('core not running')
@@ -221,13 +225,13 @@ function createWindow(): BrowserWindow {
   })
   window.on('close', (event) => {
     if (quitting) return
-    if (settings.close_to_tray) {
-      event.preventDefault()
+    event.preventDefault()
+    // A transfer that runs or waits for the peer needs the app to stay: the window only goes to the tray.
+    if (settings.close_to_tray || core?.transfers.hasUnfinished()) {
       rememberBounds()
       window.hide()
       return
     }
-    event.preventDefault()
     void quitApp()
   })
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -245,6 +249,7 @@ async function quitApp(): Promise<void> {
   if (quitting) return
   quitting = true
   rememberBounds()
+  updater.stop()
   tray.destroy()
   await core?.close().catch(() => undefined)
   win?.destroy()
@@ -277,6 +282,13 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on('window:close', () => win?.close())
     tray = new AppTray(icon, () => settings.language, showWindow, () => void quitApp())
     tray.show()
+    ipcMain.handle('update:state', () => updater.snapshot())
+    ipcMain.handle('update:check', () => {
+      void updater.check()
+      return updater.snapshot()
+    })
+    ipcMain.handle('update:install', () => updater.install(() => void quitApp()))
+    updater.start()
     win = createWindow()
     await startCore()
   })

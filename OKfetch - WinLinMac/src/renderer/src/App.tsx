@@ -13,6 +13,7 @@ import { KeysPage } from './pages/KeysPage'
 import { MainPage } from './pages/MainPage'
 import { StoragePathPage } from './pages/StoragePathPage'
 import { applyTheme } from './theme'
+import { useUpdateState } from './updates'
 
 interface PendingConfirm {
   options: ConfirmOptions
@@ -49,6 +50,13 @@ export function App() {
       if (event.type === 'app') setStatus(event.status)
     })
   }, [])
+
+  // A downloaded release is announced once; the Settings page keeps showing it until it is installed.
+  const update = useUpdateState()
+  const readyVersion = update?.status === 'ready' ? update.latest : undefined
+  useEffect(() => {
+    if (readyVersion) notify(tRef.current('update.ready_toast', { version: readyVersion }))
+  }, [readyVersion, notify])
 
   useEffect(() => {
     if (!settings) return
