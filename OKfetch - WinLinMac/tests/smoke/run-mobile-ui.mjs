@@ -1,6 +1,6 @@
 // Phone UI test (run `npm run smoke:mobile`): the Android web build in a phone-sized browser (Edge or Chrome
 // through Playwright) with the fake core of webFake.ts. Checks the phone layout, the back button, dialogs,
-// QR scan, the share flow, settings sections, the lock switch, the system theme and the Android-only help.
+// QR scan, the share flow, settings sections, the lock switch and the system theme.
 import { execFileSync } from 'node:child_process'
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, statSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -57,12 +57,11 @@ try {
   check(await noSideScroll(), 'list fits the width')
   await shot('01-list')
 
-  // Open a chat: full screen, back arrow, list hidden, "?" hidden.
+  // Open a chat: full screen, back arrow, list hidden.
   await page.locator('.contact', { hasText: 'Alena' }).locator('.kind-row').first().click()
   await page.locator('.chat-toolbar .chat-title').waitFor()
   check(!(await page.locator('.side').isVisible()), 'chat replaces the list')
   check(await page.locator('.chat-title', { hasText: 'Alena' }).isVisible(), 'chat header shows the contact')
-  check(!(await page.locator('.help-button').isVisible()), '"?" hidden in the chat (does not cover Send)')
   check(await noSideScroll(), 'chat fits the width')
   await page.waitForFunction(() => window.__okfetchFake.calls.some((c) => c.method === 'markRead'))
   check(true, 'open chat marks messages read')
@@ -83,6 +82,23 @@ try {
   const sent = await page.evaluate(() => window.__okfetchFake.calls.find((c) => c.method === 'sendMessage').args[1])
   check(sent.includes('Prvni radek') && sent.includes('druhy radek') && /<p>.*<\/p><p>.*<\/p>/.test(sent), 'Send button sends both lines')
 
+  // An address becomes a link while it is typed, in the theme's accent colour.
+  await editor.click()
+  await page.keyboard.type('https://seznam.cz/hledani')
+  const typedLink = page.locator('.composer .editor-content a')
+  check(await typedLink.count() === 1 && (await typedLink.getAttribute('href')) === 'https://seznam.cz/hledani', 'typed address is a link before any space')
+  const accent = await page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent)'
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  })
+  check((await typedLink.evaluate((el) => getComputedStyle(el).color)) === accent, 'the link has the theme accent colour')
+  await page.keyboard.press('Control+A')
+  await page.keyboard.press('Backspace')
+
   // Attach menu: bottom sheet with File / Take photo; Back closes it.
   await page.locator('.attach-wrap .icon-button').click()
   check(await page.locator('.sheet.attach-menu').isVisible(), 'paperclip opens File / Take photo')
@@ -94,14 +110,57 @@ try {
   await page.locator('.message-row.theirs .bubble').first().dispatchEvent('contextmenu')
   check(await page.locator('.selection-bar, .message-row.selected').count() > 0, 'holding a message selects it')
   const barRight = await page.locator('.selection-bar button').evaluateAll((buttons) => Math.max(...buttons.map((b) => b.getBoundingClientRect().right)))
-  check(barRight <= 375, `all delete buttons fit on the screen (right edge ${Math.round(barRight)} px)`)
+  check(barRight <= 375, `all selection buttons fit on the screen (right edge ${Math.round(barRight)} px)`)
+  // Both rows are grids: the buttons in a row have equal widths and the same 8 px gap.
+  const rowOf = (selector) =>
+    page.locator(selector).evaluateAll((buttons) => {
+      const boxes = buttons.map((b) => b.getBoundingClientRect())
+      return { widths: boxes.map((box) => Math.round(box.width)), gaps: boxes.slice(1).map((box, i) => Math.round(box.left - boxes[i].right)) }
+    })
+  const head = await rowOf('.selection-head button')
+  const actions = await rowOf('.selection-actions button')
+  check(head.widths.length === 2 && Math.abs(head.widths[0] - head.widths[1]) <= 2 && Math.abs(head.gaps[0] - 8) <= 1, `Reply and Copy share the row (${head.widths.join(', ')} px, gap ${head.gaps[0]} px)`)
+  check(actions.widths.length === 3 && Math.max(...actions.widths) - Math.min(...actions.widths) <= 2, `the three buttons have equal widths (${actions.widths.join(', ')} px)`)
+  check(actions.gaps.length === 2 && actions.gaps.every((gap) => Math.abs(gap - 8) <= 1), `8 px between the three buttons (${actions.gaps.join(', ')} px)`)
   await shot('03-selecting')
-  await page.locator('.chat-toolbar .icon-button.toggled').click()
+  // Copy puts the selected messages in the clipboard and ends the selection.
+  await page.locator('.selection-head button', { hasText: 'Kopírovat' }).click()
+  await page.waitForFunction(() => window.__okfetchFake.calls.some((c) => c.method === 'copyText'))
+  check(await page.evaluate(() => window.__okfetchFake.calls.find((c) => c.method === 'copyText').args[0].length > 0), 'Copy puts the selected message in the clipboard')
+  check(await page.locator('.selection-bar').count() === 0, 'Copy ends the selection')
+
+  // Phone: dragging a bubble to the right answers it; the reply goes out with the quote of that message.
+  await page.evaluate(() => {
+    const row = document.querySelector('.message-row.theirs')
+    const at = (type, x) => row.dispatchEvent(new PointerEvent(type, { pointerId: 7, pointerType: 'touch', clientX: x, clientY: 200, bubbles: true }))
+    at('pointerdown', 40)
+    at('pointermove', 60)
+    at('pointermove', 120)
+    at('pointerup', 120)
+  })
+  await page.locator('.reply-bar').waitFor()
+  check(await page.locator('.reply-bar .quote-text').count() === 1, 'dragging a bubble to the right opens the reply bar')
+  await editor.click()
+  await page.keyboard.type('Odpovidam')
+  await page.locator('.send-button').click()
+  await page.waitForFunction(() => window.__okfetchFake.calls.some((c) => c.method === 'sendMessage' && c.args[2]))
+  await page.locator('.reply-bar').waitFor({ state: 'detached' })
+  check(true, 'sending the reply closes the reply bar')
+  // The message reaches the list a moment after the reply bar closes (the chat is read again), so wait for the quote.
+  await page.locator('.message-row.mine .bubble-quote').first().waitFor()
+  check(true, 'the reply shows the quoted message above its text')
 
   // Back: chat → list.
   await back()
   check(await page.locator('.side').isVisible(), 'Back returns from the chat to the list')
-  check(await page.locator('.help-button').isVisible(), '"?" is back on the list')
+  // Phone: a gear button beside each contact and group; its menu has rename, icon, verify, block, remove.
+  check(await page.locator('.contact .row-options').count() === 3, 'gear button beside each contact and group')
+  await page.locator('.contact', { hasText: 'Bob' }).locator('.row-options').click()
+  check(await page.locator('.context-menu button', { hasText: 'Přejmenovat' }).isVisible(), 'gear opens the contact menu')
+  check(await page.locator('.context-menu button', { hasText: 'Připnout' }).count() === 1, 'the contact menu pins the chat')
+  check(await page.locator('.context-menu button', { hasText: 'Ztlumit' }).count() === 1, 'the contact menu mutes the chat')
+  await back()
+  check(await page.locator('.context-menu').count() === 0, 'Back closes that menu')
 
   // A long chat scrolls inside; the composer stays on the screen.
   const composerOnScreen = () =>
@@ -113,6 +172,17 @@ try {
   await page.locator('.chat-title', { hasText: 'Bob' }).waitFor()
   await page.waitForTimeout(300)
   check(await composerOnScreen(), 'long chat: the composer stays on the phone screen')
+  // Scrolled up, a button brings back the newest message.
+  await page.evaluate(() => {
+    const list = document.querySelector('.chat-messages')
+    list.scrollTop = 0
+    list.dispatchEvent(new Event('scroll'))
+  })
+  await page.locator('.jump-latest').waitFor()
+  check(true, 'scrolled up, a button brings back the newest message')
+  await page.locator('.jump-latest').click()
+  await page.locator('.jump-latest').waitFor({ state: 'detached' })
+  check(true, 'the button brings back the newest message')
   await back()
   await page.setViewportSize({ width: 1200, height: 800 })
   await page.locator('.contact', { hasText: 'Bob' }).locator('.kind-row').first().click()
@@ -135,16 +205,6 @@ try {
   await shot('04-add-contact')
   await back()
   check(await page.locator('.modal').count() === 0, 'Back closes the dialog')
-
-  // Help: Android only, fits the screen.
-  await page.locator('.help-button').click()
-  await page.locator('.help-dialog').waitFor()
-  check(await page.locator('.help-dialog .tab').count() === 0, 'help has no Windows / Linux / macOS tabs')
-  check((await page.locator('.help-dialog .help').innerText()).includes('Android'), 'help is about Android')
-  check(await page.locator('.help-dialog .help').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), 'help text stays inside the screen')
-  check(Math.abs((await widthOf('.help-dialog')) - 375) < 2, 'help fills the screen')
-  await shot('05-help')
-  await back()
 
   // Share to OKfetch: a file and a text go to the chosen chat.
   await page.evaluate(() => {

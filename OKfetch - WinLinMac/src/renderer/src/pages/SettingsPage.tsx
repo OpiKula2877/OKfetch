@@ -11,6 +11,7 @@ import { Icon } from '../components/Icon'
 import { SecretInput } from '../components/SecretInput'
 import { useApp } from '../context'
 import { useData } from '../data'
+import { checkForUpdate, installUpdate, useUpdateState } from '../updates'
 import { Okfetch, isNative } from '../mobile/native'
 import { isAndroid, useBack, usePhone } from '../mobile/phone'
 import { groupId, shortId } from '../util/format'
@@ -172,6 +173,13 @@ function AppearanceTab() {
             <span className="muted">pt</span>
           </div>
         </div>
+        <div className="form-row">
+          <span>{t('settings.message_font')}</span>
+          <select value={settings.message_font} onChange={(e) => void updateSettings({ message_font: e.target.value as Settings['message_font'] })}>
+            <option value="mono">{t('settings.message_font_mono')}</option>
+            <option value="sans">{t('settings.message_font_sans')}</option>
+          </select>
+        </div>
       </Group>
       <Group title={t('settings.theme')}>
         {(isAndroid() ? PHONE_THEMES : DESKTOP_THEMES).map((theme) => (
@@ -308,6 +316,48 @@ function LockGroup() {
   )
 }
 
+/** The app's own update: the newest release downloads in the background; the installation waits for the user. */
+function UpdateGroup() {
+  const { t } = useApp()
+  const update = useUpdateState()
+  const [allowInstall, setAllowInstall] = useState(false)
+  if (!update) return null
+  const busy = update.status === 'checking' || update.status === 'downloading'
+  const percent = update.progress ?? 0
+
+  const install = async (): Promise<void> => setAllowInstall(!(await installUpdate()) && isAndroid())
+
+  return (
+    <Group title={t('update.title')}>
+      <p className="muted">{t('update.info')}</p>
+      <p>{t('update.current', { version: update.current })}</p>
+      {update.status === 'checking' && <p className="muted">{t('update.checking')}</p>}
+      {update.status === 'upToDate' && <p className="muted">{t('update.up_to_date')}</p>}
+      {update.status === 'downloading' && (
+        <>
+          <p className="muted">{t('update.downloading', { version: update.latest ?? '', percent })}</p>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${percent}%` }} />
+          </div>
+        </>
+      )}
+      {update.status === 'ready' && <p>{t('update.ready', { version: update.latest ?? '' })}</p>}
+      {update.status === 'error' && <div className="banner">{t('update.error')}</div>}
+      {allowInstall && <div className="banner">{t('update.allow_install')}</div>}
+      <div className="row">
+        <button type="button" disabled={busy} onClick={() => checkForUpdate()}>
+          <Icon name="refresh" size={16} /> {t('update.check')}
+        </button>
+        {update.status === 'ready' && (
+          <button type="button" className="primary" onClick={() => void install()}>
+            <Icon name="download" size={16} /> {t('update.install')}
+          </button>
+        )}
+      </div>
+    </Group>
+  )
+}
+
 /** Android: background service, notifications, battery, backup and restore. */
 function PhoneSystemTab() {
   const { t, settings, updateSettings, notify, confirm } = useApp()
@@ -393,6 +443,7 @@ function PhoneSystemTab() {
           {t('phone.hide_content')}
         </label>
       </Group>
+      <UpdateGroup />
       <NetworkGroup />
       <Group title={t('backup.title')}>
         <p className="muted">{t('backup.info')}</p>
@@ -463,6 +514,7 @@ function SystemTab() {
           {t('settings.autostart')}
         </label>
       </Group>
+      <UpdateGroup />
       <NetworkGroup />
     </>
   )

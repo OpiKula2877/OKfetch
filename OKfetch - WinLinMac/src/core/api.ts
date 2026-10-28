@@ -74,7 +74,8 @@ export function createHandlers(host: ApiHost): ApiHandlers {
     declineInvite: (id) => host.core().groups.decline(String(id)),
 
     getMessages: (chatId) => host.core().messages.list(String(chatId)),
-    sendMessage: (chatId, html) => host.core().messages.send(String(chatId), String(html)),
+    sendMessage: (chatId, html, replyTo) =>
+      host.core().messages.send(String(chatId), String(html), replyTo === undefined || replyTo === null ? undefined : String(replyTo)),
     sendTyping: (chatId) => host.core().messages.typing(String(chatId)),
     markRead: (chatId) => host.core().messages.markRead(String(chatId)),
     deleteMessages: (chatId, ids, scope) =>
@@ -88,6 +89,12 @@ export function createHandlers(host: ApiHost): ApiHandlers {
     acceptFile: (chatId, id) => host.core().transfers.accept(String(chatId), String(id)),
     rejectFile: (chatId, id, feedback) => host.core().transfers.reject(String(chatId), String(id), feedback === undefined ? '' : String(feedback)),
     cancelFile: (chatId, id) => host.core().transfers.cancel(String(chatId), String(id)),
+    retryFile: (chatId, id) => host.core().transfers.retry(String(chatId), String(id)),
+    setChatFlags: (chatId, flags) =>
+      host.core().setChatFlags(String(chatId), {
+        muted: flags.muted === undefined ? undefined : Boolean(flags.muted),
+        pinned: flags.pinned === undefined ? undefined : Boolean(flags.pinned)
+      }),
     openFile: async (chatId, id) => {
       const path = host.core().transfers.filePath(String(chatId), String(id))
       if (!path) return

@@ -10,6 +10,7 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.Window;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.JSArray;
@@ -20,10 +21,12 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import java.io.File;
 
 /**
  * The WebView side of the bridge. `send` passes a line to the core; lines from the core come back as "line"
- * events. The rest are phone things the core does not handle: the lock, the QR scanner, battery and bar colours.
+ * events. The rest are phone things the core does not handle: the lock, the QR scanner, battery, bar colours and
+ * the app's own update (AppUpdater.java; its state comes back as "update" events).
  */
 @CapacitorPlugin(
     name = "Okfetch",
@@ -43,12 +46,16 @@ public class OkfetchPlugin extends Plugin {
         });
         LaunchQueue.setListener(() -> notifyListeners("launch", new JSObject()));
         hub.start();
+        AppUpdater updates = AppUpdater.get(getContext());
+        updates.setListener((state) -> notifyListeners("update", state));
+        updates.start();
     }
 
     @Override
     protected void handleOnDestroy() {
         hub.setWebListener(null);
         LaunchQueue.setListener(null);
+        AppUpdater.get(getContext()).setListener(null);
     }
 
     @PluginMethod(returnType = PluginMethod.RETURN_NONE)
@@ -174,5 +181,49 @@ public class OkfetchPlugin extends Plugin {
                 call.reject("Bad colour", "ERROR", error);
             }
         });
+    }
+
+    /** The app's own update: the state now; the changes come as "update" events. */
+    @PluginMethod
+    public void updateState(PluginCall call) {
+        call.resolve(AppUpdater.get(getContext()).snapshot());
+    }
+
+    /** Looks for a newer release; the download goes on in the background. */
+    @PluginMethod
+    public void checkUpdate(PluginCall call) {
+        AppUpdater updates = AppUpdater.get(getContext());
+        updates.check();
+        call.resolve(updates.snapshot());
+    }
+
+    /** The downloaded release goes to Android's installer, which asks the user once more. */
+    @PluginMethod
+    public void installUpdate(PluginCall call) {
+        File apk = AppUpdater.get(getContext()).installer();
+        if (apk == null) {
+            call.resolve(new JSObject().put("ok", false));
+            return;
+        }
+        MainActivity activity = MainActivity.current();
+        try {
+            if (activity != null) activity.lock().allowExternal();
+            if (!AppUpdater.canInstall(getContext())) {
+                // Android allows installs from OKfetch only after the user says so; then Install is tapped again.
+                Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getContext().getPackageName()));
+                settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(settings);
+                call.resolve(new JSObject().put("ok", false));
+                return;
+            }
+            Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", apk);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve(new JSObject().put("ok", true));
+        } catch (Exception error) {
+            call.reject("The update cannot be installed.", "ERROR", error);
+        }
     }
 }

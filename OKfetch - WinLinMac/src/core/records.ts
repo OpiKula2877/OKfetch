@@ -27,6 +27,8 @@ export interface StoredMessage {
   /** Outgoing: the peer has read it. Incoming: I have read it. */
   read: boolean
   file?: StoredFile
+  /** The message this one answers: `{ id, from, text }` as JSON (ciphertext in encrypted chats). */
+  quote?: string
 }
 
 export interface MessagePatch {
@@ -49,6 +51,10 @@ export interface StoredContact {
   addedAt: number
   /** The 16-character key, protected by the operating system. */
   keyBlob: string
+  /** Notifications for this contact are off. */
+  muted?: boolean
+  /** Shown first in the list. */
+  pinned?: boolean
 }
 
 export interface IncomingRequest {
@@ -85,6 +91,8 @@ export interface StoredGroup {
   state: 'active' | 'invited'
   inviter: string | null
   createdAt: number
+  muted?: boolean
+  pinned?: boolean
 }
 
 export interface OutboxEntry {

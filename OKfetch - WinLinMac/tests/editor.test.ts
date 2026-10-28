@@ -53,6 +53,61 @@ describe('composer editor', () => {
   })
 })
 
+describe('live links', () => {
+  /** Types one character at a time, the way the keyboard does. */
+  function typeText(e: Editor, text: string): void {
+    for (const char of text) e.view.dispatch(e.state.tr.insertText(char))
+  }
+
+  it('links an address while it is typed, before any space', () => {
+    const e = editor('<p></p>')
+    typeText(e, 'seznam.cz/hledani')
+    expect(e.getHTML()).toMatch(/<a [^>]*href="https:\/\/seznam\.cz\/hledani"[^>]*>seznam\.cz\/hledani<\/a>/)
+    e.destroy()
+  })
+
+  it('keeps the space and the words after an address out of the link', () => {
+    const e = editor('<p></p>')
+    typeText(e, 'seznam.cz ahoj')
+    expect(e.getHTML()).toMatch(/<a [^>]*href="https:\/\/seznam\.cz"[^>]*>seznam\.cz<\/a> ahoj<\/p>/)
+    e.destroy()
+  })
+
+  it('links an address that arrives with other words in one piece, as a keyboard suggestion does', () => {
+    const e = editor('<p></p>')
+    e.view.dispatch(e.state.tr.insertText('Podivej se na seznam.cz a dal'))
+    expect(e.getHTML()).toMatch(/Podivej se na <a [^>]*href="https:\/\/seznam\.cz"[^>]*>seznam\.cz<\/a> a dal<\/p>/)
+    e.destroy()
+  })
+
+  it('leaves the punctuation after an address out of the link', () => {
+    const e = editor('<p></p>')
+    typeText(e, 'Navštivte seznam.cz.')
+    expect(e.getHTML()).toMatch(/<a [^>]*href="https:\/\/seznam\.cz"[^>]*>seznam\.cz<\/a>\.<\/p>/)
+    e.destroy()
+  })
+
+  it('takes the link off again when the text stops being an address', () => {
+    const e = editor('<p></p>')
+    typeText(e, 'seznam.cz')
+    e.view.dispatch(e.state.tr.delete(e.state.selection.from - 2, e.state.selection.from))
+    expect(e.getHTML()).not.toContain('<a ')
+    e.destroy()
+  })
+
+  it('leaves links set by hand alone', () => {
+    const e = editor('<p></p>')
+    typeText(e, 'seznam.cz')
+    e.commands.selectAll()
+    e.commands.setLink({ href: 'https://example.com', class: null })
+    e.commands.setTextSelection(e.state.doc.content.size - 1)
+    typeText(e, 'x')
+    expect(e.getHTML()).toContain('href="https://example.com"')
+    expect(e.getHTML()).not.toContain('autolink')
+    e.destroy()
+  })
+})
+
 describe('sanitizer for incoming messages', () => {
   it('keeps what the editor produces', () => {
     const html = '<h1>Nadpis</h1><p data-indent="2">Text <strong>tučně</strong> <em>kurzívou</em> <a href="https://example.com">odkaz</a></p>'

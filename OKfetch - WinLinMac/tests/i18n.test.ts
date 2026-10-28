@@ -10,7 +10,7 @@ function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name)
     if (statSync(path).isDirectory()) return sources(path)
-    return /\.(ts|tsx)$/.test(name) && !name.startsWith('strings') && name !== 'helpContent.ts' ? [path] : []
+    return /\.(ts|tsx)$/.test(name) && !name.startsWith('strings') ? [path] : []
   })
 }
 

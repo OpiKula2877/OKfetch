@@ -2,9 +2,9 @@
 import { rmSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  isGroupChat, parseChatId, type FileView, type MessageView
+  isGroupChat, parseChatId, type FileView, type MessageView, type ReplyView
 } from '../../shared/model'
-import { OFFLINE_CHAR_LIMIT, isEmptyMessage, plainText, textLength } from '../../shared/text'
+import { OFFLINE_CHAR_LIMIT, isEmptyMessage, plainText, preview, textLength } from '../../shared/text'
 import type { SendResult } from '../../shared/model'
 import type { Core } from '../controller'
 import { decryptText, encryptText, messageAd } from '../encryption/aead'
@@ -17,6 +17,7 @@ import { randomBytes } from '../sodium'
 type Of<T extends Ctrl['t']> = Extract<Ctrl, { t: T }>
 
 const MAX_BODY = 512 * 1024
+const MAX_QUOTE = 4096
 const ID_PATTERN = /^[0-9a-f]{32}$/
 const TYPING_THROTTLE_MS = 3000
 
@@ -61,7 +62,8 @@ export class MessageService {
 
   // --- sending ------------------------------------------------------------------
 
-  send(chatId: string, html: string): SendResult {
+  /** `replyTo`: the message this one answers in the same chat (ignored when it is not there any more). */
+  send(chatId: string, html: string, replyTo?: string): SendResult {
     const recipients = this.recipients(chatId)
     const wire = this.wireChat(chatId)
     if (!recipients || !wire) return { ok: false, reason: 'no_chat' }
@@ -74,10 +76,20 @@ export class MessageService {
     const lamport = this.core.tick()
     const ts = Date.now()
     const body = key ? encryptText(key, html, messageAd(wire, id)) : html
-    this.core.chatLog(chatId).add({ id, chatId, from: this.core.me, ts, lamport, body, enc, kind: 'text', waiting: [...recipients], read: false })
-    for (const pub of recipients) this.core.sendReliable(pub, { t: 'msg', rid: id, chat: wire, ts, lamport, body, enc })
+    const quoted = replyTo ? this.quoteOf(chatId, replyTo) : null
+    const quote = quoted ? (key ? encryptText(key, JSON.stringify(quoted), messageAd(wire, `${id}/quote`)) : JSON.stringify(quoted)) : undefined
+    this.core.chatLog(chatId).add({ id, chatId, from: this.core.me, ts, lamport, body, enc, kind: 'text', waiting: [...recipients], read: false, quote })
+    for (const pub of recipients) this.core.sendReliable(pub, { t: 'msg', rid: id, chat: wire, ts, lamport, body, enc, quote })
     this.core.chatChanged(chatId)
     return { ok: true, id }
+  }
+
+  /** What a reply quotes: the message it answers, its author and the start of its text. */
+  private quoteOf(chatId: string, id: string): { id: string; from: string; text: string } | null {
+    const target = this.core.chatLog(chatId).messages.get(id)
+    if (!target) return null
+    const view = this.view(target)
+    return { id: target.id, from: target.from, text: view.file ? view.file.name : view.broken ? '' : preview(view.html, 160) }
   }
 
   /** The peer confirmed it stored the message. */
@@ -114,7 +126,8 @@ export class MessageService {
     const lamport = Number.isFinite(ctrl.lamport) ? Math.max(0, Math.floor(ctrl.lamport)) : 0
     const ts = Number.isFinite(ctrl.ts) ? Math.min(Math.floor(ctrl.ts), Date.now() + 86_400_000) : Date.now()
     this.core.tick(lamport)
-    const message: StoredMessage = { id: ctrl.rid, chatId, from: peer.pub, ts, lamport, body: ctrl.body, enc: ctrl.enc, kind: 'text', waiting: [], read: false }
+    const quote = typeof ctrl.quote === 'string' && ctrl.quote.length <= MAX_QUOTE ? ctrl.quote : undefined
+    const message: StoredMessage = { id: ctrl.rid, chatId, from: peer.pub, ts, lamport, body: ctrl.body, enc: ctrl.enc, kind: 'text', waiting: [], read: false, quote }
     log.add(message)
     this.core.chatChanged(chatId)
     const view = this.view(message)
@@ -122,7 +135,8 @@ export class MessageService {
       type: 'incoming',
       chatId,
       title: this.core.nameOf(peer.pub, isGroupChat(chatId) ? chatId.slice(2) : undefined),
-      text: view.broken ? '' : plainText(view.html).slice(0, 160)
+      text: view.broken ? '' : plainText(view.html).slice(0, 160),
+      muted: this.core.chatMuted(chatId)
     })
     return true
   }
@@ -276,7 +290,29 @@ export class MessageService {
       status,
       unread: !mine && !message.read,
       file,
+      reply: this.replyOf(message),
       broken: broken || undefined
+    }
+  }
+
+  /** The message this one answers, read from its stored quote (undefined when there is none or it cannot be read). */
+  private replyOf(message: StoredMessage): ReplyView | undefined {
+    if (!message.quote) return undefined
+    let text = message.quote
+    if (message.enc) {
+      const key = this.core.chatKey(message.chatId)
+      const wire = this.wireChat(message.chatId) ?? ''
+      const plain = key ? decryptText(key, message.quote, messageAd(wire, `${message.id}/quote`)) : null
+      if (plain === null) return undefined
+      text = plain
+    }
+    try {
+      const quote = JSON.parse(text) as { id?: unknown; from?: unknown; text?: unknown }
+      if (typeof quote.id !== 'string' || typeof quote.from !== 'string' || typeof quote.text !== 'string') return undefined
+      const group = isGroupChat(message.chatId) ? message.chatId.slice(2) : undefined
+      return { id: quote.id, from: quote.from, fromName: quote.from === this.core.me ? '' : this.core.nameOf(quote.from, group), text: quote.text.slice(0, 200) }
+    } catch {
+      return undefined
     }
   }
 

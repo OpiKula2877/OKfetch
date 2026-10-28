@@ -323,6 +323,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  position: relative;
 }
 .message-row.mine {
   justify-content: flex-end;
@@ -346,6 +347,7 @@
   border-radius: var(--radius);
   background: var(--bubble-theirs);
   overflow-wrap: anywhere;
+  font-family: var(--message-font, 'Cascadia Code', monospace);
 }
 .message-row.mine .bubble {
   background: var(--bubble-mine);
@@ -354,6 +356,60 @@
   font-weight: bold;
   color: var(--accent);
   font-size: 0.9em;
+}
+/* The message a reply answers, shown above the reply's text; a click shows that message. */
+.bubble-quote {
+  margin: 0 0 4px;
+  padding: 3px 8px;
+  min-width: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: rgba(127, 127, 127, 0.14);
+  cursor: pointer;
+}
+.quote-name {
+  font-weight: bold;
+  font-size: 0.85em;
+  color: var(--accent);
+}
+.quote-text {
+  font-size: 0.9em;
+  color: var(--muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.bubble {
+  transition: transform 0.15s ease-out;
+}
+.swipe-hint {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  pointer-events: none;
+}
+/* The bar above the composer that says which message the next one answers. */
+.reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.reply-bar-text {
+  flex: 1;
+  min-width: 0;
+}
+.reply-bar-text .quote-text {
+  -webkit-line-clamp: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .bubble-meta {
   display: flex;
@@ -409,6 +465,22 @@
   padding: 2px 8px;
   font-style: italic;
 }
+/* Scrolled up: a button at the bottom of the messages back to the newest one; it stays in view while the list scrolls. */
+.jump-latest {
+  position: sticky;
+  bottom: 10px;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 4px 4px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
 
 /* --- composer -------------------------------------------------------------- */
 .composer {
@@ -446,6 +518,11 @@
   align-items: center;
   gap: 8px;
   padding: 8px 4px 0;
+}
+/* One row on the desktop; the phone stacks the two rows (mobile.css). */
+.selection-head,
+.selection-actions {
+  display: contents;
 }
 
 /* --- files ------------------------------------------------------------------- */

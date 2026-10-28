@@ -6,7 +6,6 @@ import { ConfirmDialog } from './components/Modal'
 import { TitleBar } from './components/TitleBar'
 import { AppContext, type AppServices, type ConfirmOptions } from './context'
 import { DataProvider } from './data'
-import { HelpDialog } from './dialogs/HelpDialog'
 import { translator } from './i18n'
 import { handleBack, installBackButton, isAndroid, usePhone } from './mobile/phone'
 import { Okfetch, isNative } from './mobile/native'
@@ -14,6 +13,7 @@ import { KeysPage } from './pages/KeysPage'
 import { MainPage } from './pages/MainPage'
 import { StoragePathPage } from './pages/StoragePathPage'
 import { applyTheme } from './theme'
+import { useUpdateState } from './updates'
 
 interface PendingConfirm {
   options: ConfirmOptions
@@ -24,7 +24,6 @@ export function App() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [status, setStatus] = useState<AppStatus>({ phase: 'starting' })
   const [toast, setToast] = useState<{ text: string; error: boolean } | null>(null)
-  const [help, setHelp] = useState(false)
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
 
@@ -51,6 +50,13 @@ export function App() {
       if (event.type === 'app') setStatus(event.status)
     })
   }, [])
+
+  // A downloaded release is announced once; the Settings page keeps showing it until it is installed.
+  const update = useUpdateState()
+  const readyVersion = update?.status === 'ready' ? update.latest : undefined
+  useEffect(() => {
+    if (readyVersion) notify(tRef.current('update.ready_toast', { version: readyVersion }))
+  }, [readyVersion, notify])
 
   useEffect(() => {
     if (!settings) return
@@ -80,7 +86,7 @@ export function App() {
   if (!settings) return null
   // The phone has no window frame of its own: no custom title bar there.
   const native = android || resolveFlags(settings).native_titlebar
-  const services: AppServices = { t, settings, updateSettings, notify, confirm, openHelp: () => setHelp(true) }
+  const services: AppServices = { t, settings, updateSettings, notify, confirm }
 
   return (
     <AppContext.Provider value={services}>
@@ -99,11 +105,7 @@ export function App() {
           <span className={`toast ${toast?.error ? 'error-text' : 'muted'}`} role="status">
             {toast?.text}
           </span>
-          <button type="button" className="help-button" title={t('help.tooltip')} aria-label={t('help.tooltip')} onClick={() => setHelp(true)}>
-            ?
-          </button>
         </footer>
-        {help && <HelpDialog onClose={() => setHelp(false)} />}
         {pendingConfirm && (
           <ConfirmDialog
             options={pendingConfirm.options}

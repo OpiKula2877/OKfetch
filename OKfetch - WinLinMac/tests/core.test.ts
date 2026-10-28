@@ -177,10 +177,77 @@ describe('core', () => {
     const received = readFileSync(b.transfers.filePath(chatB, sent.id)!)
     expect(received.equals(content)).toBe(true)
     expect(readdirSync(join(b.state.root, 'files')).length).toBeGreaterThan(0)
+    // The sender keeps its own copy and can show it in its chat.
+    expect(readFileSync(a.transfers.filePath(chatA, sent.id)!).equals(content)).toBe(true)
   }
 
   it('transfers a file in an encrypted chat and checks the hash', () => transfer('enc'))
   it('transfers a file in a plain chat and checks the hash', () => transfer('plain'))
+
+  it('goes on with a file after the connection drops: the receiver keeps its part and nothing fails', async () => {
+    const a = await node()
+    const b = await node()
+    await befriend(a, b)
+    const source = join(dir(), 'velky.bin')
+    const content = randomBytes(16 * 1024 * 1024)
+    writeFileSync(source, content)
+    const chatA = contactChatId(b.me, 'enc')
+    const chatB = contactChatId(a.me, 'enc')
+    const sent = await a.transfers.sendFile(chatA, source)
+    if (!sent.ok) throw new Error('offer failed')
+    await until(() => b.messages.list(chatB).some((m) => m.file?.state === 'offered'))
+    expect(b.transfers.accept(chatB, sent.id)).toBe(true)
+    await until(() => (b.messages.list(chatB)[0].file?.done ?? 0) > 1024 * 1024)
+    // The line goes down in the middle of the transfer.
+    a.net.peer(b.me)?.close()
+    await until(() => b.messages.list(chatB)[0].file?.state === 'done', 60_000)
+    await until(() => a.messages.list(chatA)[0].file?.state === 'done', 60_000)
+    expect(readFileSync(b.transfers.filePath(chatB, sent.id)!).equals(content)).toBe(true)
+  }, 90_000)
+
+  it('a dropped file waits for the retry button, with no error, and goes on from where it stopped', async () => {
+    // The redial timer is far away: only the retry button brings the peer back in time.
+    const a = await Core.open({ root: dir(), bootstrap: net.bootstrap, kdf: FAST, retryMs: 60_000 })
+    const b = await Core.open({ root: dir(), bootstrap: net.bootstrap, kdf: FAST, retryMs: 60_000 })
+    cores.push(a, b)
+    await befriend(a, b)
+    const source = join(dir(), 'pausa.bin')
+    const content = randomBytes(16 * 1024 * 1024)
+    writeFileSync(source, content)
+    const chatA = contactChatId(b.me, 'enc')
+    const chatB = contactChatId(a.me, 'enc')
+    const sent = await a.transfers.sendFile(chatA, source)
+    if (!sent.ok) throw new Error('offer failed')
+    await until(() => b.messages.list(chatB).some((m) => m.file?.state === 'offered'))
+    expect(b.transfers.accept(chatB, sent.id)).toBe(true)
+    await until(() => (b.messages.list(chatB)[0].file?.done ?? 0) > 1024 * 1024)
+    a.net.peer(b.me)?.close()
+    await until(() => b.messages.list(chatB)[0].file?.state === 'paused')
+    expect(a.messages.list(chatA)[0].file?.state).toBe('paused')
+    expect(b.transfers.hasUnfinished()).toBe(true)
+    expect(b.transfers.retry(chatB, sent.id)).toBe(true)
+    await until(() => b.messages.list(chatB)[0].file?.state === 'done', 60_000)
+    await until(() => a.messages.list(chatA)[0].file?.state === 'done', 60_000)
+    expect(readFileSync(b.transfers.filePath(chatB, sent.id)!).equals(content)).toBe(true)
+  }, 120_000)
+
+  it('answers a message: the reply quotes the message it answers, in an encrypted chat', async () => {
+    const a = await node()
+    const b = await node()
+    await befriend(a, b)
+    const chatA = contactChatId(b.me, 'enc')
+    const chatB = contactChatId(a.me, 'enc')
+    const first = a.messages.send(chatA, '<p>Půjdeme na oběd?</p>')
+    if (!first.ok) throw new Error('send failed')
+    await until(() => b.messages.list(chatB).some((m) => m.id === first.id))
+    expect(b.messages.send(chatB, '<p>Jo, v jednu.</p>', first.id).ok).toBe(true)
+    await until(() => a.messages.list(chatA).some((m) => m.reply))
+    const answer = a.messages.list(chatA).find((m) => m.reply)!
+    expect(answer.reply).toMatchObject({ id: first.id, from: a.me, fromName: '', text: 'Půjdeme na oběd?' })
+    expect(answer.html).toContain('Jo, v jednu.')
+    // Answering a message that is not in the chat sends a plain message.
+    expect(b.messages.send(chatB, '<p>Bez odpovědi.</p>', 'f'.repeat(32)).ok).toBe(true)
+  })
 
   it('lets the receiver reject a file with an explanation', async () => {
     const a = await node()
@@ -229,6 +296,21 @@ describe('core', () => {
     expect(c.groups.leave(id!)).toBe(true)
     await until(() => a.groups.list()[0].members.length === 2 && b.groups.list()[0].members.length === 2)
     expect(c.groups.list()).toHaveLength(0)
+  })
+
+  it('mutes and pins a contact: the flags show in the list and silence its chat', async () => {
+    const a = await node()
+    const b = await node()
+    await befriend(a, b)
+    const chat = contactChatId(b.me, 'enc')
+    expect(a.setChatFlags(chat, { muted: true, pinned: true })).toBe(true)
+    expect(a.contacts.list()[0]).toMatchObject({ pub: b.me, muted: true, pinned: true })
+    expect(a.chatMuted(contactChatId(b.me, 'plain'))).toBe(true)
+    expect(b.chatMuted(contactChatId(a.me, 'enc'))).toBe(false)
+    expect(a.setChatFlags(chat, { muted: false })).toBe(true)
+    expect(a.chatMuted(chat)).toBe(false)
+    expect(a.contacts.list()[0]).toMatchObject({ muted: false, pinned: true })
+    expect(a.setChatFlags(contactChatId('f'.repeat(64), 'enc'), { muted: true })).toBe(false)
   })
 
   it('blocks a contact: no connection, no messages', async () => {

@@ -222,6 +222,19 @@ export class PeerNetwork {
     this.peers.get(pub)?.close()
   }
 
+  /** The user asked to connect now: the waits after failed attempts are dropped and the peer is tried at once. */
+  reconnect(pub: string): void {
+    this.wanted.add(pub)
+    if (this.peers.has(pub) || this.destroyed) return
+    if (!this.relayConfig?.only) {
+      const info = this.swarm.peers.get(fromIdentifier(pub).toString('hex'))
+      if (info) info.attempts = 0
+      this.swarm.joinPeer(fromIdentifier(pub))
+    }
+    this.relay?.resetBackoff(pub)
+    this.relay?.connect(pub)
+  }
+
   /** Hyperswarm gives up on an explicit peer after a few failed attempts; start over for peers that are still offline. */
   private redial(): void {
     for (const pub of this.wanted) {

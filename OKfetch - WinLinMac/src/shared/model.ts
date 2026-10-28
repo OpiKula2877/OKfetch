@@ -1,7 +1,8 @@
 // View models shared by the main process and the renderer.
 
 export type ChatKind = 'enc' | 'plain'
-export type FileState = 'offered' | 'accepted' | 'transferring' | 'done' | 'rejected' | 'canceled' | 'failed'
+/** `paused`: the connection went away; the transfer goes on when the peer is back. */
+export type FileState = 'offered' | 'accepted' | 'transferring' | 'paused' | 'done' | 'rejected' | 'canceled' | 'failed'
 export type MessageStatus = 'pending' | 'delivered' | 'read'
 
 /** Chat ids: `<identifier>:enc`, `<identifier>:plain` for contacts, `g:<id>` for groups. */
@@ -30,6 +31,10 @@ export interface ContactView {
   avatar: string | null
   unread: Record<ChatKind, number>
   lastActivity: number
+  /** Notifications for this contact are off. */
+  muted?: boolean
+  /** Shown first in the list. */
+  pinned?: boolean
 }
 
 export interface RequestView {
@@ -65,6 +70,14 @@ export interface GroupView {
   state: 'active' | 'invited'
   inviterName: string | null
   lastActivity: number
+  muted?: boolean
+  pinned?: boolean
+}
+
+/** Mute and pin of a contact or a group: my own choices, nothing is sent to the other side. */
+export interface ChatFlags {
+  muted?: boolean
+  pinned?: boolean
 }
 
 export interface FileView {
@@ -95,8 +108,18 @@ export interface MessageView {
   /** Incoming and not read by me yet. */
   unread: boolean
   file?: FileView
+  /** The message this one answers. */
+  reply?: ReplyView
   /** Encrypted message that cannot be decrypted (wrong or missing key). */
   broken?: boolean
+}
+
+export interface ReplyView {
+  id: string
+  from: string
+  /** Empty when the quoted message is mine. */
+  fromName: string
+  text: string
 }
 
 export interface BlockedView {

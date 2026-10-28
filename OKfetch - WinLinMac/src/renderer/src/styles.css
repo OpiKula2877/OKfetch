@@ -120,21 +120,6 @@ textarea {
   flex: 1;
   min-height: 1.2em;
 }
-.help-button {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  border: none;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-weight: bold;
-  font-size: calc(var(--font-size) + 3pt);
-  cursor: pointer;
-  padding: 0;
-}
-.help-button:hover {
-  background: var(--accent-hover);
-}
 
 /* --- generic controls -------------------------------------------------- */
 button {
@@ -664,6 +649,10 @@ input.title-edit:focus {
 .editor-content > :first-child {
   margin-top: 0;
 }
+.editor-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
 
 /* --- dialogs ----------------------------------------------------------- */
 .modal-backdrop {
@@ -793,29 +782,6 @@ input.title-edit:focus {
   min-height: 200px;
 }
 
-.help {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 18px 18px;
-  line-height: 1.45;
-  user-select: text;
-}
-.help h1 {
-  margin: 10px 0;
-}
-.help h2 {
-  margin: 18px 0 6px;
-  font-size: 1.25em;
-}
-.help code {
-  padding: 0 4px;
-  border-radius: 3px;
-}
-.help td {
-  padding: 3px 12px 3px 0;
-}
-
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -850,21 +816,4 @@ label.button {
 label.button:hover {
   border-color: var(--accent);
   background: var(--hover);
-}
-
-/* Help text never runs past the screen edge. */
-.help {
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
-.help code {
-  word-break: break-all;
-}
-.help ol,
-.help ul {
-  padding-left: 1.3em;
-}
-
-.help.tab-panel {
-  display: block;
 }

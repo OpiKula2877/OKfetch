@@ -19,7 +19,10 @@ const api = {
   windowMinimize: () => ipcRenderer.send('window:minimize'),
   windowToggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
   windowClose: () => ipcRenderer.send('window:close'),
-  onMaximized: (listener: (maximized: boolean) => void) => listen('window:maximized', listener)
+  onMaximized: (listener: (maximized: boolean) => void) => listen('window:maximized', listener),
+  updateState: () => ipcRenderer.invoke('update:state'),
+  checkForUpdate: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install')
 } as unknown as OkfetchApi
 
 contextBridge.exposeInMainWorld('okfetch', api)

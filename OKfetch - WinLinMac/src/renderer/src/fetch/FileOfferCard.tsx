@@ -24,7 +24,8 @@ export function FileOfferCard({ message, done }: Props) {
   const incoming = file.direction === 'in'
   const transferred = Math.min(done ?? file.done, file.size)
   const percent = file.size > 0 ? Math.round((transferred / file.size) * 100) : 100
-  const preview = file.state === 'done' && file.rel && incoming && isImage(file.mime, file.name)
+  // The image shows at once for the sender (its own copy) and for the receiver once the file is complete.
+  const preview = Boolean(file.rel) && isImage(file.mime, file.name) && (!incoming || file.state === 'done')
 
   let body
   switch (file.state) {
@@ -47,6 +48,23 @@ export function FileOfferCard({ message, done }: Props) {
           <button type="button" className="link" onClick={() => void api.cancelFile(chatId, message.id)}>
             {t('file.withdraw')}
           </button>
+        </div>
+      )
+      break
+    case 'paused':
+      // Not an error: the transfer waits for the connection and goes on from where it stopped.
+      body = (
+        <div className="file-progress">
+          <span className="muted">{t('file.paused')}</span>
+          <div className="row">
+            <span className="muted grow">{formatSize(transferred)} / {formatSize(file.size)}</span>
+            <button type="button" onClick={() => void api.retryFile(chatId, message.id)}>
+              <Icon name="refresh" size={14} /> {t('file.retry')}
+            </button>
+            <button type="button" className="link" onClick={() => void api.cancelFile(chatId, message.id)}>
+              {t('file.cancel')}
+            </button>
+          </div>
         </div>
       )
       break

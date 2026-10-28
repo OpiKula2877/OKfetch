@@ -1,7 +1,7 @@
 // Contract between the main process and the renderer.
 import type { PasswordError } from './keys'
 import type {
-  AddContactResult, BlockedView, ContactView, GroupView, MessageView, NetDiagnostics, NetStatus, OutgoingRequestView, ProbeResult, ProfileView, RequestView, SendResult, TransferProgress
+  AddContactResult, BlockedView, ChatFlags, ContactView, GroupView, MessageView, NetDiagnostics, NetStatus, OutgoingRequestView, ProbeResult, ProfileView, RequestView, SendResult, TransferProgress
 } from './model'
 
 export interface Settings {
@@ -11,6 +11,8 @@ export interface Settings {
   custom_flags: Record<string, boolean>
   language: 'cs' | 'en'
   font_size: number
+  /** Font of the message bubbles: 'mono' (Cascadia Code, as before) or 'sans' (the system font). */
+  message_font: 'mono' | 'sans'
   window_bounds: { x?: number; y?: number; width: number; height: number; maximized: boolean } | null
   /** Storage folder chosen by the user; null = default for the system. */
   storage_path: string | null
@@ -47,7 +49,7 @@ export type CoreEvent =
   | { type: 'typing'; chatId: string; pub: string }
   | { type: 'net'; status: NetStatus }
   | { type: 'transfer'; progress: TransferProgress }
-  | { type: 'incoming'; chatId: string; title: string; text: string }
+  | { type: 'incoming'; chatId: string; title: string; text: string; muted?: boolean }
   | { type: 'request'; title: string }
 
 export type UiEvent =
@@ -56,6 +58,19 @@ export type UiEvent =
   | { type: 'app'; status: AppStatus }
   /** Android: the settings changed (the Java host applies the lock, screenshots and the background service). */
   | { type: 'settings'; settings: Settings }
+  | { type: 'update'; state: UpdateState }
+
+/** The app's own update: the newest release is downloaded in the background and installed only when the user asks. */
+export interface UpdateState {
+  status: 'idle' | 'checking' | 'upToDate' | 'downloading' | 'ready' | 'error'
+  /** The running version. */
+  current: string
+  /** The version being downloaded or ready to install. */
+  latest?: string
+  /** Download progress, 0–100. */
+  progress?: number
+  error?: string
+}
 
 export type AppStatus =
   | { phase: 'starting' }
@@ -88,6 +103,10 @@ export interface OkfetchApi {
 
   getStatus(): Promise<AppStatus>
   onEvent(listener: (event: UiEvent) => void): () => void
+  /** The app's own update, Windows and Android (the browser has none): see renderer/src/updates.ts. */
+  updateState?(): Promise<UpdateState>
+  checkForUpdate?(): Promise<UpdateState>
+  installUpdate?(): Promise<boolean>
 
   // storage location
   pickFolder(): Promise<string | null>
@@ -131,7 +150,8 @@ export interface OkfetchApi {
 
   // chats
   getMessages(chatId: string): Promise<MessageView[]>
-  sendMessage(chatId: string, html: string): Promise<SendResult>
+  /** `replyTo`: the message this one answers (a message of the same chat). */
+  sendMessage(chatId: string, html: string, replyTo?: string): Promise<SendResult>
   sendTyping(chatId: string): void
   markRead(chatId: string): Promise<void>
   deleteMessages(chatId: string, ids: string[], scope: 'me' | 'both'): Promise<{ deleted: number; skipped: number }>
@@ -142,6 +162,10 @@ export interface OkfetchApi {
   acceptFile(chatId: string, id: string): Promise<boolean>
   rejectFile(chatId: string, id: string, feedback?: string): Promise<boolean>
   cancelFile(chatId: string, id: string): Promise<boolean>
+  /** A transfer that waits for the peer: connect now, and go on from where it stopped. */
+  retryFile(chatId: string, id: string): Promise<boolean>
+  /** Mute or pin a contact or a group (given by its chat id). */
+  setChatFlags(chatId: string, flags: ChatFlags): Promise<boolean>
   openFile(chatId: string, id: string): Promise<void>
   showFile(chatId: string, id: string): Promise<void>
   /** Android: copy a received file to Downloads. */
@@ -174,13 +198,13 @@ export const API_METHODS = [
   'listContacts', 'listRequests', 'listBlocked', 'addContact', 'cancelRequest', 'acceptRequest', 'rejectRequest', 'blockPeer', 'unblockPeer',
   'renameContact', 'setContactIcon', 'verifyContact', 'getFingerprint', 'removeContact',
   'listGroups', 'createGroup', 'updateGroup', 'leaveGroup', 'acceptInvite', 'declineInvite',
-  'getMessages', 'sendMessage', 'sendTyping', 'markRead', 'deleteMessages', 'sendFile', 'sendPrepared', 'acceptFile', 'rejectFile', 'cancelFile', 'openFile', 'showFile',
-  'saveFile', 'shareFile', 'openExternal', 'copyText', 'getSettings', 'updateSettings', 'createBackup', 'restoreBackup', 'resetData'
+  'getMessages', 'sendMessage', 'sendTyping', 'markRead', 'deleteMessages', 'sendFile', 'sendPrepared', 'acceptFile', 'rejectFile', 'cancelFile', 'retryFile', 'openFile', 'showFile',
+  'saveFile', 'shareFile', 'openExternal', 'copyText', 'getSettings', 'updateSettings', 'createBackup', 'restoreBackup', 'resetData', 'setChatFlags'
 ] as const
 
 export type ApiMethod = (typeof API_METHODS)[number]
 
-type NotInvoked = 'platform' | 'onEvent' | 'onMaximized' | 'windowMinimize' | 'windowToggleMaximize' | 'windowClose'
+type NotInvoked = 'platform' | 'onEvent' | 'onMaximized' | 'windowMinimize' | 'windowToggleMaximize' | 'windowClose' | 'updateState' | 'checkForUpdate' | 'installUpdate'
 // Compile-time check: every invoked method of OkfetchApi is listed above.
 const _complete: Exclude<keyof OkfetchApi, NotInvoked | ApiMethod> extends never ? true : never = true
 void _complete

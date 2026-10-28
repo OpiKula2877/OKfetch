@@ -6,6 +6,7 @@ import { Icon, IconButton } from '../components/Icon'
 import { useApp } from '../context'
 import { useData } from '../data'
 import { canDeleteForBoth } from '../../../shared/selection'
+import { plainText } from '../../../shared/text'
 import { formatDay } from '../util/format'
 import { countMatches } from '../util/sanitize'
 import { ChatSearch } from './ChatSearch'
@@ -26,6 +27,12 @@ interface Props {
 
 const NEAR_BOTTOM_PX = 140
 
+/** What copying a message gives: its text, the file name for a file offer, nothing for a message that cannot be decrypted. */
+function copyTextOf(message: MessageView): string {
+  if (message.file) return message.file.name
+  return message.broken ? '' : plainText(message.html)
+}
+
 export function ChatView({ chatId, active, onBack, draft, onDraftUsed }: Props) {
   const { t, settings, confirm, notify } = useApp()
   const data = useData()
@@ -36,8 +43,14 @@ export function ChatView({ chatId, active, onBack, draft, onDraftUsed }: Props) 
   const [query, setQuery] = useState('')
   const [match, setMatch] = useState(0)
   const [progress, setProgress] = useState<Record<string, number>>({})
+  /** The message the composer answers. */
+  const [replyTo, setReplyTo] = useState<MessageView | null>(null)
   const list = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
+  /** The reader is scrolled up, and how many messages came meanwhile. */
+  const [away, setAway] = useState(false)
+  const [unseen, setUnseen] = useState(0)
+  const seenIds = useRef<Set<string>>(new Set())
 
   const parsed = parseChatId(chatId)
   const group = parsed?.type === 'group' ? data.groups.find((g) => g.id === parsed.id) : undefined
@@ -72,15 +85,52 @@ export function ChatView({ chatId, active, onBack, draft, onDraftUsed }: Props) 
     return () => window.removeEventListener('focus', mark)
   }, [active, unread, chatId])
 
+  /** Back to the newest message: the jump button, or a message of my own. */
+  const jumpToLatest = (): void => {
+    const element = list.current
+    if (element) element.scrollTop = element.scrollHeight
+    stick.current = true
+    setAway(false)
+    setUnseen(0)
+  }
+
+  // A chat opens at its newest message.
+  useEffect(() => {
+    stick.current = true
+    seenIds.current = new Set()
+    setAway(false)
+    setUnseen(0)
+  }, [chatId])
+
   // Keep the newest message in view unless the reader scrolled up.
   useEffect(() => {
     const element = list.current
     if (element && stick.current) element.scrollTop = element.scrollHeight
   }, [messages, typingNow, active])
 
+  // Messages that arrive while the reader is scrolled up are counted on the jump button; my own message brings the newest into view.
+  useEffect(() => {
+    const current = messages.filter((m) => m.chatId === chatId)
+    const fresh = current.filter((m) => !seenIds.current.has(m.id))
+    for (const m of current) seenIds.current.add(m.id)
+    if (fresh.some((m) => m.mine)) {
+      const element = list.current
+      if (element) element.scrollTop = element.scrollHeight
+      stick.current = true
+      setAway(false)
+      setUnseen(0)
+    } else if (!stick.current) {
+      const arrivals = fresh.filter((m) => !m.mine).length
+      if (arrivals) setUnseen((n) => n + arrivals)
+    }
+  }, [messages, chatId])
+
   const onScroll = (): void => {
     const element = list.current
-    if (element) stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < NEAR_BOTTOM_PX
+    if (!element) return
+    stick.current = element.scrollHeight - element.scrollTop - element.clientHeight < NEAR_BOTTOM_PX
+    setAway(!stick.current)
+    if (stick.current) setUnseen(0)
   }
 
   // Search: every occurrence in order; `match` is the active one.
@@ -139,6 +189,15 @@ export function ChatView({ chatId, active, onBack, draft, onDraftUsed }: Props) 
     stopSelecting()
   }
 
+  const copy = (): void => {
+    const text = chosen.map(copyTextOf).filter(Boolean).join('\n')
+    if (text) {
+      void api.copyText(text)
+      notify(t('chat.copied'))
+    }
+    stopSelecting()
+  }
+
   const firstPending = messages.findIndex((m) => m.mine && m.status === 'pending')
   const showSender = isGroupChat(chatId)
 
@@ -148,6 +207,16 @@ export function ChatView({ chatId, active, onBack, draft, onDraftUsed }: Props) 
   const startSelecting = (id: string): void => {
     setSelecting(true)
     setSelected(new Set([id]))
+  }
+
+  // A quoted message that was deleted is no longer answered.
+  useEffect(() => {
+    if (replyTo && !messages.some((m) => m.id === replyTo.id)) setReplyTo(null)
+  }, [messages, replyTo])
+
+  /** Scrolls to a message of this chat (a quote points at the message it answers). */
+  const showMessage = (id: string): void => {
+    list.current?.querySelector(`[data-message="${id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }
 
   return (
@@ -199,16 +268,45 @@ export function ChatView({ chatId, active, onBack, draft, onDraftUsed }: Props) 
                 activeMatch={activeLocation?.id === message.id ? activeLocation.occurrence : null}
                 transferDone={progress[message.id]}
                 onLongPress={phone && !selecting ? () => startSelecting(message.id) : undefined}
+                onReply={() => setReplyTo(message)}
+                onQuote={showMessage}
               />
             </Fragment>
           )
         })}
+        {away && (
+          <button type="button" className="jump-latest" title={t('chat.jump_latest')} aria-label={t('chat.jump_latest')} onClick={jumpToLatest}>
+            <Icon name="chevron_down" size={18} />
+            {unseen > 0 && <span className="badge">{unseen}</span>}
+          </button>
+        )}
       </div>
       <div className="typing-line muted">{typingNow ? t('chat.typing', { name: typingName }) : ''}</div>
       {selecting ? (
-        <SelectionBar count={selected.size} canDeleteBoth={canDeleteForBoth(chosen)} onDeleteMe={() => void remove('me')} onDeleteBoth={() => void remove('both')} onCancel={stopSelecting} />
+        <SelectionBar
+          count={selected.size}
+          canDeleteBoth={canDeleteForBoth(chosen)}
+          onCopy={copy}
+          onReply={() => {
+            setReplyTo(chosen[0] ?? null)
+            stopSelecting()
+          }}
+          onDeleteMe={() => void remove('me')}
+          onDeleteBoth={() => void remove('both')}
+          onCancel={stopSelecting}
+        />
       ) : (
-        <Composer chatId={chatId} someoneOffline={someoneOffline} canAttach={!isGroupChat(chatId)} phone={phone} draft={draft} onDraftUsed={onDraftUsed} />
+        <Composer
+          chatId={chatId}
+          someoneOffline={someoneOffline}
+          canAttach={!isGroupChat(chatId)}
+          phone={phone}
+          draft={draft}
+          onDraftUsed={onDraftUsed}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
+          onSent={() => setReplyTo(null)}
+        />
       )}
     </div>
   )

@@ -54,7 +54,7 @@ export function FetchPage({ visible }: { visible: boolean }) {
   }
   useBack(phone && visible && active !== null, closeActive)
 
-  // The "?" button would cover the send button in a full-screen chat.
+  // A full-screen chat on the phone hides the app header (the chat has its own back arrow).
   const chatOnScreen = phone && visible && active !== null
   useEffect(() => {
     document.body.dataset.chatOpen = String(chatOnScreen)

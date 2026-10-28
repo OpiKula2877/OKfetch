@@ -97,7 +97,8 @@ export const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEdito
   }
   const applyLink = (): void => {
     const href = normalizeLink(linkText)
-    if (href) run().extendMarkRange('link').setLink({ href }).run()
+    // class null: a link made by hand, not an address typed in the text (see LiveLink).
+    if (href) run().extendMarkRange('link').setLink({ href, class: null }).run()
     else run().extendMarkRange('link').unsetLink().run()
     setLinkOpen(false)
   }

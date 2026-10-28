@@ -1,6 +1,6 @@
 /* Android build. .android = any Android screen, .phone = phone-sized (list and chat full screen, dialogs full screen). */
 
-/* --- touch: holding a contact or message opens its menu / selection instead of selecting text --- */
+/* --- touch: holding a contact, group or message does not select its text (holding a message selects it) --- */
 .window.android .contact,
 .window.android .kind-row,
 .window.android .group-row,
@@ -110,10 +110,6 @@
   min-height: 42px;
 }
 
-.window.phone .side-scroll {
-  padding-bottom: 76px;
-}
-
 .window.phone .chat-toolbar {
   gap: 6px;
   padding: 4px 6px;
@@ -141,24 +137,49 @@
   max-width: 85%;
 }
 
+/* Dragging a bubble sideways answers it; the chat still scrolls up and down. */
+.window.phone .message-row {
+  touch-action: pan-y;
+}
+
 .window.phone .typing-line {
   padding: 0 10px;
 }
 
-/* "Selected: n" on its own line, the three buttons share the width below it. */
+/* Phone: the count on its own line, then Reply and Copy, then the three buttons. Both rows are grids with the same
+   8 px gap and equal columns, so the buttons line up whatever their text is. */
 .window.phone .selection-bar {
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
   padding: 6px 8px 8px;
 }
 
-.window.phone .selection-bar > span {
-  flex-basis: 100%;
+.window.phone .selection-count {
+  flex: none;
+  text-align: center;
+}
+
+.window.phone .selection-head,
+.window.phone .selection-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.window.phone .selection-head {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.window.phone .selection-head > :only-child {
+  grid-column: 1 / -1;
+}
+
+.window.phone .selection-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .window.phone .selection-bar button {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   min-height: 42px;
   padding-left: 4px;
   padding-right: 4px;
@@ -266,26 +287,7 @@
   padding: 8px 16px;
 }
 
-/* help: text wraps inside the screen */
-.window.phone .help {
-  overflow-wrap: anywhere;
-}
-
-.window.phone .help code {
-  white-space: normal;
-  word-break: break-all;
-}
-
-.window.phone .help table {
-  width: 100%;
-}
-
-.window.phone .help ul,
-.window.phone .help ol {
-  padding-left: 20px;
-}
-
-/* --- toast and "?" float above the content --- */
+/* --- toast floats above the content --- */
 .window.phone .footer {
   position: fixed;
   left: 0;
@@ -308,21 +310,8 @@
   text-align: center;
 }
 
-.window.phone .help-button {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  z-index: 40;
-  width: 46px;
-  height: 46px;
-  border-radius: 23px;
-  pointer-events: auto;
-}
-
-/* A full-screen chat needs all the room: no app header, no "?" over the Send button. Settings sections hide "?" too. */
-body[data-chat-open='true'] .window.phone .help-button,
-body[data-chat-open='true'] .window.phone .phone-header,
-.window.phone:has(.section-back) .help-button {
+/* A full-screen chat needs all the room: no app header, the chat has its own back arrow. */
+body[data-chat-open='true'] .window.phone .phone-header {
   display: none;
 }
 

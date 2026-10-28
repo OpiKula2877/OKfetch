@@ -3,7 +3,7 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { CoreEvent } from '../shared/ipc'
-import { contactChatId, isGroupChat, parseChatId } from '../shared/model'
+import { contactChatId, isGroupChat, parseChatId, type ChatFlags } from '../shared/model'
 import { deriveChatKey } from './encryption/aead'
 import { DEFAULT_KDF, type KdfParams } from './encryption/passwordProof'
 import { ContactService } from './contacts/contactService'
@@ -169,6 +169,21 @@ export class Core {
     this.emit({ type: isGroupChat(chatId) ? 'groups' : 'contacts' })
   }
 
+  /** Notifications of this chat are off (its unread messages are still counted). */
+  chatMuted(chatId: string): boolean {
+    const parsed = parseChatId(chatId)
+    if (!parsed) return false
+    if (parsed.type === 'contact') return Boolean(this.state.contacts.find((c) => c.pub === parsed.pub)?.muted)
+    return Boolean(this.state.groups.find((g) => g.id === parsed.id)?.muted)
+  }
+
+  /** Mutes or pins a contact or a group; false when there is no such chat. */
+  setChatFlags(chatId: string, flags: ChatFlags): boolean {
+    const parsed = parseChatId(chatId)
+    if (!parsed) return false
+    return parsed.type === 'contact' ? this.contacts.setFlags(parsed.pub, flags) : this.groups.setFlags(parsed.id, flags)
+  }
+
   isContact(pub: string): boolean {
     return this.state.contacts.some((c) => c.pub === pub)
   }
@@ -258,6 +273,7 @@ export class Core {
     if (this.isContact(pub) || this.isMember(pub)) {
       this.sendHello(peer)
       for (const entry of this.state.outbox) if (entry.peer === pub) peer.send(entry.frame)
+      this.transfers.onPeerOpen(peer)
     } else if (!this.hasOutgoing(pub)) {
       this.contacts.challenge(peer)
     }
@@ -273,7 +289,7 @@ export class Core {
 
   private handleClose(peer: Peer): void {
     this.contacts.onClose(peer.pub)
-    this.transfers.onPeerClosed(peer.pub)
+    this.transfers.onPeerClosed(peer)
     if (!this.closed) {
       this.emit({ type: 'contacts' })
       this.emit({ type: 'groups' })
@@ -343,6 +359,12 @@ export class Core {
         break
       case 'file_done':
         this.transfers.onDone(peer, ctrl)
+        break
+      case 'file_resume':
+        void this.transfers.onResume(peer, ctrl)
+        break
+      case 'file_position':
+        this.transfers.onPosition(peer, ctrl)
         break
       case 'group_invite':
         ack = this.groups.onInvite(peer, ctrl)

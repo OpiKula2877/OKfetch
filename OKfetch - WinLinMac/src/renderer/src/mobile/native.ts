@@ -1,5 +1,6 @@
 // The Java side of the Android app (OkfetchPlugin.java), as seen from the WebView.
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core'
+import type { UpdateState } from '../../../shared/ipc'
 
 export type LaunchItem =
   | { type: 'open-chat'; chatId: string }
@@ -11,6 +12,7 @@ export interface OkfetchNative {
   send(options: { line: string }): Promise<void>
   addListener(event: 'line', listener: (data: { line: string }) => void): Promise<PluginListenerHandle>
   addListener(event: 'launch', listener: () => void): Promise<PluginListenerHandle>
+  addListener(event: 'update', listener: (state: UpdateState) => void): Promise<PluginListenerHandle>
   takeLaunch(): Promise<{ items: LaunchItem[] }>
   /** 'ok', 'none' (no fingerprint and no screen lock) or 'unavailable'. */
   lockInfo(): Promise<{ availability: 'ok' | 'none' | 'unavailable' }>
@@ -21,6 +23,10 @@ export interface OkfetchNative {
   notificationsInfo(): Promise<{ granted: boolean }>
   requestNotifications(): Promise<{ granted: boolean }>
   setBarColors(options: { background: string; text: string; light: boolean }): Promise<void>
+  /** The app's own update (AppUpdater.java): its state, a check now, and the install of a downloaded release. */
+  updateState(): Promise<UpdateState>
+  checkUpdate(): Promise<UpdateState>
+  installUpdate(): Promise<{ ok: boolean }>
 }
 
 export const isNative = Capacitor.isNativePlatform()

@@ -92,7 +92,8 @@ export type Ctrl =
   | { t: 'request'; username: string; proof: string; key: string }
   | { t: 'rack'; rid: string }
   | { t: 'request_result'; rid: string; accepted: boolean; reason?: string; retryMin?: number; username?: string; feedback?: string }
-  | { t: 'msg'; rid: string; chat: string; ts: number; lamport: number; body: string; enc: boolean }
+  /** `quote`: the message this one answers (ciphertext in encrypted chats); old versions ignore it. */
+  | { t: 'msg'; rid: string; chat: string; ts: number; lamport: number; body: string; enc: boolean; quote?: string }
   | { t: 'read'; rid: string; chat: string; ids: string[] }
   | { t: 'del'; rid: string; chat: string; ids: string[] }
   | { t: 'typing'; chat: string }
@@ -104,6 +105,10 @@ export type Ctrl =
   | { t: 'file_cancel'; id: string }
   | { t: 'file_end'; id: string; blocks: number }
   | { t: 'file_done'; id: string; ok: boolean }
+  /** Sent by the sender when a connection is up again: where does the receiver stand? */
+  | { t: 'file_resume'; id: string }
+  /** The receiver's answer: it has the blocks before `blocks`, send from there. */
+  | { t: 'file_position'; id: string; blocks: number }
   | { t: 'group_invite'; rid: string; doc: GroupDoc; key: string | null }
   | { t: 'group_join'; rid: string; id: string }
   | { t: 'group_update'; rid: string; doc: GroupDoc }

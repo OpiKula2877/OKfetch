@@ -16,10 +16,11 @@ export function defaultSettings(): Settings {
     custom_flags: {},
     language: 'cs',
     font_size: 11,
+    message_font: 'mono',
     window_bounds: null,
     storage_path: null,
     notifications: true,
-    close_to_tray: false,
+    close_to_tray: true,
     autostart: false,
     app_lock: false,
     lock_after: 1,
@@ -57,6 +58,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     custom_flags: isRecord(r.custom_flags) ? Object.fromEntries(Object.entries(r.custom_flags).map(([k, v]) => [k, Boolean(v)])) : {},
     language: r.language === 'en' ? 'en' : 'cs',
     font_size: clamp(r.font_size, 8, 22, d.font_size),
+    message_font: r.message_font === 'sans' ? 'sans' : 'mono',
     window_bounds:
       bounds && Number(bounds.width) > 0 && Number(bounds.height) > 0
         ? {
@@ -69,7 +71,7 @@ export function sanitizeSettings(raw: unknown): Settings {
         : null,
     storage_path: typeof r.storage_path === 'string' && r.storage_path.trim() ? r.storage_path : null,
     notifications: r.notifications === undefined ? d.notifications : Boolean(r.notifications),
-    close_to_tray: Boolean(r.close_to_tray),
+    close_to_tray: r.close_to_tray === undefined ? d.close_to_tray : Boolean(r.close_to_tray),
     autostart: Boolean(r.autostart),
     app_lock: Boolean(r.app_lock),
     lock_after: LOCK_TIMES.includes(r.lock_after as (typeof LOCK_TIMES)[number]) ? (r.lock_after as number) : d.lock_after,

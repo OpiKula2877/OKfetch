@@ -7,10 +7,18 @@ import { installWebFake } from './webFake'
 
 if (!window.okfetch) {
   if (isNative) {
-    window.okfetch = createMobileApi({
-      send: (line) => void Okfetch.send({ line }),
-      onLine: (listener) => void Okfetch.addListener('line', ({ line }) => listener(line))
-    })
+    window.okfetch = createMobileApi(
+      {
+        send: (line) => void Okfetch.send({ line }),
+        onLine: (listener) => void Okfetch.addListener('line', ({ line }) => listener(line)),
+        onNativeEvent: (listener) => void Okfetch.addListener('update', (state) => listener({ type: 'update', state }))
+      },
+      {
+        updateState: () => Okfetch.updateState(),
+        checkForUpdate: () => Okfetch.checkUpdate(),
+        installUpdate: () => Okfetch.installUpdate().then((result) => result.ok)
+      }
+    )
     setFileUrlBase(PHONE_FILE_BASE)
   } else {
     installWebFake()

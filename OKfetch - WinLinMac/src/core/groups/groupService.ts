@@ -1,7 +1,7 @@
 // Groups: encrypted or plain, mesh topology (every member talks to every member).
 // The roster authorises connections between members who are not contacts. Name and member changes are
 // last-writer-wins on (lamport clock, public key of the writer); anyone can change them.
-import { groupChatId, type GroupView } from '../../shared/model'
+import { groupChatId, type ChatFlags, type GroupView } from '../../shared/model'
 import type { Core } from '../controller'
 import { cleanName } from '../contacts/contactService'
 import { decryptText, deriveChatKey, encryptText } from '../encryption/aead'
@@ -69,6 +69,16 @@ export class GroupService {
     this.core.emit({ type: 'requests' })
   }
 
+  /** Mute and pin: my own choices, nothing is sent to the group. */
+  setFlags(id: string, flags: ChatFlags): boolean {
+    const group = this.find(id)
+    if (!group) return false
+    if (flags.muted !== undefined) group.muted = flags.muted
+    if (flags.pinned !== undefined) group.pinned = flags.pinned
+    this.save()
+    return true
+  }
+
   list(): GroupView[] {
     return this.groups.map((group) => {
       const chatId = groupChatId(group.id)
@@ -78,6 +88,8 @@ export class GroupService {
         id: group.id,
         name: group.name,
         type: group.type,
+        muted: Boolean(group.muted),
+        pinned: Boolean(group.pinned),
         members: group.members.map((m) => ({
           pub: m.pub,
           name: m.pub === this.core.me ? this.core.state.profile.username || m.name : this.core.nameOf(m.pub, group.id),

@@ -16,7 +16,6 @@ export interface AppServices {
   updateSettings(patch: Partial<Settings>): Promise<void>
   notify(text: string, error?: boolean): void
   confirm(options: ConfirmOptions): Promise<boolean>
-  openHelp(): void
 }
 
 export const AppContext = createContext<AppServices | null>(null)

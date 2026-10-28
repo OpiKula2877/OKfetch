@@ -2,6 +2,7 @@
 // put into window.__okfetchFake.scan, launch items come from window.__okfetchFake.launch.
 import { WebPlugin } from '@capacitor/core'
 import type { LaunchItem, OkfetchNative } from './native'
+import type { UpdateState } from '../../../shared/ipc'
 
 export class OkfetchWeb extends WebPlugin implements Omit<OkfetchNative, 'addListener'> {
   async send(): Promise<void> {
@@ -47,4 +48,17 @@ export class OkfetchWeb extends WebPlugin implements Omit<OkfetchNative, 'addLis
   }
 
   async setBarColors(): Promise<void> {}
+
+  /** The browser has no update to show. */
+  async updateState(): Promise<UpdateState> {
+    return { status: 'idle', current: '' }
+  }
+
+  async checkUpdate(): Promise<UpdateState> {
+    return { status: 'idle', current: '' }
+  }
+
+  async installUpdate(): Promise<{ ok: boolean }> {
+    return { ok: false }
+  }
 }

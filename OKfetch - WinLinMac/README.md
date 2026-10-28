@@ -125,7 +125,7 @@ src/core/            čistý TypeScript bez Electronu (testovatelný)
 src/main/            okno, IPC, safeStorage, tray, autostart, notifikace, okfetch-file://
 src/preload/         typované API window.okfetch (contextIsolation + sandbox)
 src/shared/          typy, palety témat, pravidla hesla, pomocné funkce
-src/renderer/src/    React: Fetch, Nastavení, chat, dialogy, nápověda, i18n (cs/en)
+src/renderer/src/    React: Fetch, Nastavení, chat, dialogy, i18n (cs/en)
   mobile/              Android: most k jádru (mobileApi), tlačítko Zpět, falešné jádro pro testy v prohlížeči
 src/mobile/          jádro pro telefon v Bare workletu: řádkový protokol (rpc), ochrana klíčů, záloha, úklid
 mobile-worklet/      balíček workletu (vlastní node_modules s bare-*), sestavuje scripts/build-worklet.mjs
@@ -140,11 +140,11 @@ docs/DESIGN.md       technický návrh
 |---|---|
 | `npm run typecheck` | typová kontrola main i rendereru |
 | `npm test` | vitest: krypto, protokol, úložiště, služby jádra, editor, překlady |
-| `npm run smoke` | sestaví a spustí 2 instance Electronu, projde kliknutím přidání kontaktu, chat, GIF, výběr, hledání, motivy, nápovědu |
+| `npm run smoke` | sestaví a spustí 2 instance Electronu, projde kliknutím přidání kontaktu, chat, GIF, výběr, hledání, motivy |
 | `npm run smoke:relay` | 2 instance Electronu, každá na vlastní lokální DHT: kontakt a zpráva jen přes veřejné relay (potřebuje internet) |
 | `npm run dev:two` | dvě okna k ruční zkoušce |
 | `npm run apk` | sestaví podepsané APK a zkopíruje ho do `..\OKfetch - Android\OKfetch.apk` |
-| `npm run smoke:mobile` | UI telefonu v prohlížeči (Edge, 375×812) s falešným jádrem: rozložení, Zpět, dialogy, QR, sdílení, nastavení, nápověda |
+| `npm run smoke:mobile` | UI telefonu v prohlížeči (Edge, 375×812) s falešným jádrem: rozložení, Zpět, dialogy, QR, sdílení, nastavení |
 | `npm run smoke:android` | APK na emulátoru (adb, root) proti jádru v Node přes veřejnou DHT: žádost, zprávy, soubory, notifikace, sdílení, záloha a obnova, zámek |
 | `npm run smoke:android:request` | telefon pošle žádost počítači přes „Přidat kontakt“; s `OKFETCH_E2E_RELAY=1` jen přes veřejné relay |
 | `OKFETCH_LIVE_RELAYS=1 npx vitest run tests/relayLive.test.ts` | dvě jádra jen přes skutečné veřejné relay: žádost, zprávy, soubor (potřebuje internet) |
