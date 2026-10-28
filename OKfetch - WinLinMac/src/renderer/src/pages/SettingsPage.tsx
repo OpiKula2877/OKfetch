@@ -173,6 +173,13 @@ function AppearanceTab() {
             <span className="muted">pt</span>
           </div>
         </div>
+        <div className="form-row">
+          <span>{t('settings.message_font')}</span>
+          <select value={settings.message_font} onChange={(e) => void updateSettings({ message_font: e.target.value as Settings['message_font'] })}>
+            <option value="mono">{t('settings.message_font_mono')}</option>
+            <option value="sans">{t('settings.message_font_sans')}</option>
+          </select>
+        </div>
       </Group>
       <Group title={t('settings.theme')}>
         {(isAndroid() ? PHONE_THEMES : DESKTOP_THEMES).map((theme) => (

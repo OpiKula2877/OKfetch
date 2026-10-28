@@ -90,6 +90,11 @@ export function createHandlers(host: ApiHost): ApiHandlers {
     rejectFile: (chatId, id, feedback) => host.core().transfers.reject(String(chatId), String(id), feedback === undefined ? '' : String(feedback)),
     cancelFile: (chatId, id) => host.core().transfers.cancel(String(chatId), String(id)),
     retryFile: (chatId, id) => host.core().transfers.retry(String(chatId), String(id)),
+    setChatFlags: (chatId, flags) =>
+      host.core().setChatFlags(String(chatId), {
+        muted: flags.muted === undefined ? undefined : Boolean(flags.muted),
+        pinned: flags.pinned === undefined ? undefined : Boolean(flags.pinned)
+      }),
     openFile: async (chatId, id) => {
       const path = host.core().transfers.filePath(String(chatId), String(id))
       if (!path) return

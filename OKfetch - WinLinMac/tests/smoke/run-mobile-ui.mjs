@@ -111,12 +111,17 @@ try {
   check(await page.locator('.selection-bar, .message-row.selected').count() > 0, 'holding a message selects it')
   const barRight = await page.locator('.selection-bar button').evaluateAll((buttons) => Math.max(...buttons.map((b) => b.getBoundingClientRect().right)))
   check(barRight <= 375, `all selection buttons fit on the screen (right edge ${Math.round(barRight)} px)`)
-  // The three buttons under the count keep the width of their text: the gaps between them are equal.
-  const gaps = await page.locator('.selection-actions button').evaluateAll((buttons) => {
-    const boxes = buttons.map((b) => b.getBoundingClientRect())
-    return boxes.slice(1).map((box, i) => Math.round(box.left - boxes[i].right))
-  })
-  check(gaps.length === 2 && Math.abs(gaps[0] - gaps[1]) <= 1, `equal gaps between the buttons (${gaps.join(', ')} px)`)
+  // Both rows are grids: the buttons in a row have equal widths and the same 8 px gap.
+  const rowOf = (selector) =>
+    page.locator(selector).evaluateAll((buttons) => {
+      const boxes = buttons.map((b) => b.getBoundingClientRect())
+      return { widths: boxes.map((box) => Math.round(box.width)), gaps: boxes.slice(1).map((box, i) => Math.round(box.left - boxes[i].right)) }
+    })
+  const head = await rowOf('.selection-head button')
+  const actions = await rowOf('.selection-actions button')
+  check(head.widths.length === 2 && Math.abs(head.widths[0] - head.widths[1]) <= 2 && Math.abs(head.gaps[0] - 8) <= 1, `Reply and Copy share the row (${head.widths.join(', ')} px, gap ${head.gaps[0]} px)`)
+  check(actions.widths.length === 3 && Math.max(...actions.widths) - Math.min(...actions.widths) <= 2, `the three buttons have equal widths (${actions.widths.join(', ')} px)`)
+  check(actions.gaps.length === 2 && actions.gaps.every((gap) => Math.abs(gap - 8) <= 1), `8 px between the three buttons (${actions.gaps.join(', ')} px)`)
   await shot('03-selecting')
   // Copy puts the selected messages in the clipboard and ends the selection.
   await page.locator('.selection-head button', { hasText: 'Kopírovat' }).click()
@@ -152,6 +157,8 @@ try {
   check(await page.locator('.contact .row-options').count() === 3, 'gear button beside each contact and group')
   await page.locator('.contact', { hasText: 'Bob' }).locator('.row-options').click()
   check(await page.locator('.context-menu button', { hasText: 'Přejmenovat' }).isVisible(), 'gear opens the contact menu')
+  check(await page.locator('.context-menu button', { hasText: 'Připnout' }).count() === 1, 'the contact menu pins the chat')
+  check(await page.locator('.context-menu button', { hasText: 'Ztlumit' }).count() === 1, 'the contact menu mutes the chat')
   await back()
   check(await page.locator('.context-menu').count() === 0, 'Back closes that menu')
 
@@ -165,6 +172,17 @@ try {
   await page.locator('.chat-title', { hasText: 'Bob' }).waitFor()
   await page.waitForTimeout(300)
   check(await composerOnScreen(), 'long chat: the composer stays on the phone screen')
+  // Scrolled up, a button brings back the newest message.
+  await page.evaluate(() => {
+    const list = document.querySelector('.chat-messages')
+    list.scrollTop = 0
+    list.dispatchEvent(new Event('scroll'))
+  })
+  await page.locator('.jump-latest').waitFor()
+  check(true, 'scrolled up, a button brings back the newest message')
+  await page.locator('.jump-latest').click()
+  await page.locator('.jump-latest').waitFor({ state: 'detached' })
+  check(true, 'the button brings back the newest message')
   await back()
   await page.setViewportSize({ width: 1200, height: 800 })
   await page.locator('.contact', { hasText: 'Bob' }).locator('.kind-row').first().click()

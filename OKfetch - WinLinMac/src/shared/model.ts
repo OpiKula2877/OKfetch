@@ -31,6 +31,10 @@ export interface ContactView {
   avatar: string | null
   unread: Record<ChatKind, number>
   lastActivity: number
+  /** Notifications for this contact are off. */
+  muted?: boolean
+  /** Shown first in the list. */
+  pinned?: boolean
 }
 
 export interface RequestView {
@@ -66,6 +70,14 @@ export interface GroupView {
   state: 'active' | 'invited'
   inviterName: string | null
   lastActivity: number
+  muted?: boolean
+  pinned?: boolean
+}
+
+/** Mute and pin of a contact or a group: my own choices, nothing is sent to the other side. */
+export interface ChatFlags {
+  muted?: boolean
+  pinned?: boolean
 }
 
 export interface FileView {

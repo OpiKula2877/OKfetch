@@ -146,7 +146,8 @@
   padding: 0 10px;
 }
 
-/* "Selected: n" and Copy on the first row; the three buttons below keep the width of their text and the gaps between them are equal. */
+/* Phone: the count on its own line, then Reply and Copy, then the three buttons. Both rows are grids with the same
+   8 px gap and equal columns, so the buttons line up whatever their text is. */
 .window.phone .selection-bar {
   flex-direction: column;
   align-items: stretch;
@@ -154,18 +155,31 @@
   padding: 6px 8px 8px;
 }
 
+.window.phone .selection-count {
+  flex: none;
+  text-align: center;
+}
+
 .window.phone .selection-head,
 .window.phone .selection-actions {
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 8px;
 }
 
+.window.phone .selection-head {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.window.phone .selection-head > :only-child {
+  grid-column: 1 / -1;
+}
+
 .window.phone .selection-actions {
-  justify-content: space-between;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .window.phone .selection-bar button {
+  width: 100%;
   min-height: 42px;
   padding-left: 4px;
   padding-right: 4px;

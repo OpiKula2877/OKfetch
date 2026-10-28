@@ -34,7 +34,8 @@ export function applyTheme(settings: Settings): void {
     '--radius': flags.rounded ? '8px' : '0px',
     '--radius-sm': flags.rounded ? '6px' : '0px',
     '--radius-lg': flags.rounded ? '12px' : '0px',
-    '--font-size': `${settings.font_size}pt`
+    '--font-size': `${settings.font_size}pt`,
+    '--message-font': settings.message_font === 'sans' ? "'Segoe UI', system-ui, sans-serif" : "'Cascadia Code', Consolas, 'DejaVu Sans Mono', Menlo, monospace"
   }
   for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value)
   root.dataset.windowBorder = String(flags.window_border)

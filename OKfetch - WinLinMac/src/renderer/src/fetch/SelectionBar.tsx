@@ -13,13 +13,13 @@ interface Props {
   onCancel: () => void
 }
 
-/** Desktop: one row. Phone: the count and Copy on the first row, the three buttons below (mobile.css). */
+/** Desktop: one row. Phone: the count, then Reply and Copy, then the three buttons below (mobile.css). */
 export function SelectionBar({ count, canDeleteBoth, onCopy, onReply, onDeleteMe, onDeleteBoth, onCancel }: Props) {
   const { t } = useApp()
   return (
     <div className="selection-bar">
+      <span className="selection-count grow">{t('chat.selected', { n: count })}</span>
       <div className="selection-head">
-        <span className="grow">{t('chat.selected', { n: count })}</span>
         {count === 1 && (
           <button type="button" onClick={onReply}>
             <Icon name="reply" size={16} /> {t('chat.reply')}

@@ -3,7 +3,7 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { CoreEvent } from '../shared/ipc'
-import { contactChatId, isGroupChat, parseChatId } from '../shared/model'
+import { contactChatId, isGroupChat, parseChatId, type ChatFlags } from '../shared/model'
 import { deriveChatKey } from './encryption/aead'
 import { DEFAULT_KDF, type KdfParams } from './encryption/passwordProof'
 import { ContactService } from './contacts/contactService'
@@ -167,6 +167,21 @@ export class Core {
     this.unreadCache.delete(chatId)
     this.emit({ type: 'chat', chatId })
     this.emit({ type: isGroupChat(chatId) ? 'groups' : 'contacts' })
+  }
+
+  /** Notifications of this chat are off (its unread messages are still counted). */
+  chatMuted(chatId: string): boolean {
+    const parsed = parseChatId(chatId)
+    if (!parsed) return false
+    if (parsed.type === 'contact') return Boolean(this.state.contacts.find((c) => c.pub === parsed.pub)?.muted)
+    return Boolean(this.state.groups.find((g) => g.id === parsed.id)?.muted)
+  }
+
+  /** Mutes or pins a contact or a group; false when there is no such chat. */
+  setChatFlags(chatId: string, flags: ChatFlags): boolean {
+    const parsed = parseChatId(chatId)
+    if (!parsed) return false
+    return parsed.type === 'contact' ? this.contacts.setFlags(parsed.pub, flags) : this.groups.setFlags(parsed.id, flags)
   }
 
   isContact(pub: string): boolean {

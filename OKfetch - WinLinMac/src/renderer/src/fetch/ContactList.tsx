@@ -4,6 +4,7 @@ import { Avatar } from '../components/Avatar'
 import { ContextMenu, type MenuItem } from '../components/ContextMenu'
 import { Icon, IconButton } from '../components/Icon'
 import { useApp } from '../context'
+import { api } from '../api'
 import { usePhone } from '../mobile/phone'
 
 interface Props {
@@ -36,11 +37,15 @@ export function ContactList(props: Props) {
   const needle = props.query.trim().toLocaleLowerCase()
   const contacts = props.contacts
     .filter((c) => !needle || `${c.name} ${c.username}`.toLocaleLowerCase().includes(needle))
-    .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name))
-  const groups = props.groups.filter((g) => g.state === 'active' && (!needle || g.name.toLocaleLowerCase().includes(needle)))
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name))
+  const groups = props.groups
+    .filter((g) => g.state === 'active' && (!needle || g.name.toLocaleLowerCase().includes(needle)))
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
 
   const contactItems = (contact: ContactView): MenuItem[] => [
-    { label: t('contact.rename'), onSelect: () => props.onRename(contact) },
+    { label: contact.pinned ? t('chat.unpin') : t('chat.pin'), onSelect: () => void api.setChatFlags(contactChatId(contact.pub, 'enc'), { pinned: !contact.pinned }) },
+    { label: contact.muted ? t('chat.unmute') : t('chat.mute'), onSelect: () => void api.setChatFlags(contactChatId(contact.pub, 'enc'), { muted: !contact.muted }) },
+    { label: t('contact.rename'), onSelect: () => props.onRename(contact), separatorBefore: true },
     { label: t('contact.icon'), onSelect: () => props.onIcon(contact) },
     { label: t('contact.icon_remove'), onSelect: () => props.onIconRemove(contact) },
     { label: t('contact.verify'), onSelect: () => props.onVerify(contact) },
@@ -48,7 +53,9 @@ export function ContactList(props: Props) {
     { label: t('contact.remove'), onSelect: () => props.onRemove(contact), danger: true }
   ]
   const groupItems = (group: GroupView): MenuItem[] => [
-    { label: t('group.settings'), onSelect: () => props.onGroupSettings(group) },
+    { label: group.pinned ? t('chat.unpin') : t('chat.pin'), onSelect: () => void api.setChatFlags(groupChatId(group.id), { pinned: !group.pinned }) },
+    { label: group.muted ? t('chat.unmute') : t('chat.mute'), onSelect: () => void api.setChatFlags(groupChatId(group.id), { muted: !group.muted }) },
+    { label: t('group.settings'), onSelect: () => props.onGroupSettings(group), separatorBefore: true },
     { label: t('group.leave'), onSelect: () => props.onLeaveGroup(group), danger: true, separatorBefore: true }
   ]
 
@@ -87,6 +94,8 @@ export function ContactList(props: Props) {
               <div className="item-title">
                 {contact.name}
                 {contact.verified && <span className="verified" title={t('contact.verified')}><Icon name="shield" size={13} /></span>}
+                {contact.pinned && <Icon name="pin" size={12} />}
+                {contact.muted && <Icon name="bell_off" size={12} />}
               </div>
               <div className="item-sub">{contact.blocked ? t('contact.blocked') : contact.online && contact.via === 'relay' ? t('status.online_relay') : t(contact.online ? 'status.online' : 'status.offline')}</div>
             </div>
@@ -116,6 +125,8 @@ export function ContactList(props: Props) {
               <div className="contact-names">
                 <div className="item-title">
                   {group.type === 'enc' && <Icon name="lock" size={13} />} {group.name}
+                  {group.pinned && <Icon name="pin" size={12} />}
+                  {group.muted && <Icon name="bell_off" size={12} />}
                 </div>
                 <div className="item-sub">{t('group.members_online', { online: group.members.filter((m) => m.online).length, total: group.members.length })}</div>
               </div>

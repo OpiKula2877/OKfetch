@@ -336,7 +336,7 @@ export class TransferService {
     this.core.tick(lamport)
     log.add(message)
     this.core.chatChanged(chatId)
-    this.core.emit({ type: 'incoming', chatId, title: this.core.nameOf(peer.pub), text: cleanName(meta.name, 120) })
+    this.core.emit({ type: 'incoming', chatId, title: this.core.nameOf(peer.pub), text: cleanName(meta.name, 120), muted: this.core.chatMuted(chatId) })
     return true
   }
 

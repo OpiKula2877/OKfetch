@@ -16,6 +16,7 @@ export function defaultSettings(): Settings {
     custom_flags: {},
     language: 'cs',
     font_size: 11,
+    message_font: 'mono',
     window_bounds: null,
     storage_path: null,
     notifications: true,
@@ -57,6 +58,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     custom_flags: isRecord(r.custom_flags) ? Object.fromEntries(Object.entries(r.custom_flags).map(([k, v]) => [k, Boolean(v)])) : {},
     language: r.language === 'en' ? 'en' : 'cs',
     font_size: clamp(r.font_size, 8, 22, d.font_size),
+    message_font: r.message_font === 'sans' ? 'sans' : 'mono',
     window_bounds:
       bounds && Number(bounds.width) > 0 && Number(bounds.height) > 0
         ? {

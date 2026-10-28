@@ -298,6 +298,21 @@ describe('core', () => {
     expect(c.groups.list()).toHaveLength(0)
   })
 
+  it('mutes and pins a contact: the flags show in the list and silence its chat', async () => {
+    const a = await node()
+    const b = await node()
+    await befriend(a, b)
+    const chat = contactChatId(b.me, 'enc')
+    expect(a.setChatFlags(chat, { muted: true, pinned: true })).toBe(true)
+    expect(a.contacts.list()[0]).toMatchObject({ pub: b.me, muted: true, pinned: true })
+    expect(a.chatMuted(contactChatId(b.me, 'plain'))).toBe(true)
+    expect(b.chatMuted(contactChatId(a.me, 'enc'))).toBe(false)
+    expect(a.setChatFlags(chat, { muted: false })).toBe(true)
+    expect(a.chatMuted(chat)).toBe(false)
+    expect(a.contacts.list()[0]).toMatchObject({ muted: false, pinned: true })
+    expect(a.setChatFlags(contactChatId('f'.repeat(64), 'enc'), { muted: true })).toBe(false)
+  })
+
   it('blocks a contact: no connection, no messages', async () => {
     const a = await node()
     const b = await node()

@@ -71,6 +71,7 @@ function onCoreEvent(event: CoreEvent): void {
   if (!settings.notifications || (win?.isFocused() && win.isVisible())) return
   const language = settings.language
   if (event.type === 'incoming') {
+    if (event.muted) return
     notify(event.title, event.text || (language === 'cs' ? 'Nová zpráva' : 'New message'), () => {
       showWindow()
       emitUi({ type: 'open-chat', chatId: event.chatId })

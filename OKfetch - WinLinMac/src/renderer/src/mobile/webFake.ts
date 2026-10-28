@@ -135,6 +135,7 @@ export function installWebFake(): void {
     updateGroup: () => true,
     leaveGroup: () => true,
     acceptInvite: () => true,
+    setChatFlags: () => true,
     declineInvite: () => undefined,
     getMessages: (chatId: string) => state.messages[chatId] ?? [],
     sendMessage(chatId: string, html: string, replyTo?: string) {

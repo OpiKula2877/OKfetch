@@ -51,6 +51,10 @@ export interface StoredContact {
   addedAt: number
   /** The 16-character key, protected by the operating system. */
   keyBlob: string
+  /** Notifications for this contact are off. */
+  muted?: boolean
+  /** Shown first in the list. */
+  pinned?: boolean
 }
 
 export interface IncomingRequest {
@@ -87,6 +91,8 @@ export interface StoredGroup {
   state: 'active' | 'invited'
   inviter: string | null
   createdAt: number
+  muted?: boolean
+  pinned?: boolean
 }
 
 export interface OutboxEntry {

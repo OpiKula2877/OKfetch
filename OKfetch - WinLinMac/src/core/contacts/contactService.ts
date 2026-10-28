@@ -8,6 +8,7 @@ import {
   contactChatId, fileUrl,
   type AddContactResult, type BlockedView, type ContactView, type OutgoingRequestView, type ProfileView, type RequestView
 } from '../../shared/model'
+import type { ChatFlags } from '../../shared/model'
 import { validatePassword, type PasswordError } from '../../shared/keys'
 import type { Core } from '../controller'
 import { generateContactKey, isContactKey } from '../encryption/contactKey'
@@ -74,7 +75,9 @@ export class ContactService {
         blocked: this.core.isBlocked(contact.pub),
         avatar: this.avatarUrl(contact.icon) ?? this.avatarUrl(contact.avatar),
         unread: { enc: this.core.unread(enc), plain: this.core.unread(plain) },
-        lastActivity: Math.max(this.lastTs(enc), this.lastTs(plain), contact.addedAt)
+        lastActivity: Math.max(this.lastTs(enc), this.lastTs(plain), contact.addedAt),
+        muted: Boolean(contact.muted),
+        pinned: Boolean(contact.pinned)
       }
     })
   }
@@ -407,6 +410,17 @@ export class ContactService {
     if (this.core.isContact(pub)) this.core.net.dial(pub)
     this.core.emit({ type: 'blocked' })
     this.core.emit({ type: 'contacts' })
+  }
+
+  /** Mute and pin: my own choices, nothing is sent to the contact. */
+  setFlags(pub: string, flags: ChatFlags): boolean {
+    const contact = this.state.contacts.find((c) => c.pub === pub)
+    if (!contact) return false
+    if (flags.muted !== undefined) contact.muted = flags.muted
+    if (flags.pinned !== undefined) contact.pinned = flags.pinned
+    this.state.saveContacts()
+    this.core.emit({ type: 'contacts' })
+    return true
   }
 
   /** Delete the contact together with both chats and the received files. */

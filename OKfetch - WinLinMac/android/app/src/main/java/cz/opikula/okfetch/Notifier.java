@@ -85,7 +85,7 @@ final class Notifier {
     void onEvent(JSONObject event) {
         if (MainActivity.visible || !allowed()) return;
         String type = event.optString("type");
-        if ("incoming".equals(type)) message(event.optString("chatId"), event.optString("title"), event.optString("text"));
+        if ("incoming".equals(type) && !event.optBoolean("muted")) message(event.optString("chatId"), event.optString("title"), event.optString("text"));
         else if ("request".equals(type)) request(event.optString("title"));
     }
 

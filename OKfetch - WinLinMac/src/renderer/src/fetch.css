@@ -347,6 +347,7 @@
   border-radius: var(--radius);
   background: var(--bubble-theirs);
   overflow-wrap: anywhere;
+  font-family: var(--message-font, 'Cascadia Code', monospace);
 }
 .message-row.mine .bubble {
   background: var(--bubble-mine);
@@ -463,6 +464,22 @@
   min-height: 1.4em;
   padding: 2px 8px;
   font-style: italic;
+}
+/* Scrolled up: a button at the bottom of the messages back to the newest one; it stays in view while the list scrolls. */
+.jump-latest {
+  position: sticky;
+  bottom: 10px;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 4px 4px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* --- composer -------------------------------------------------------------- */

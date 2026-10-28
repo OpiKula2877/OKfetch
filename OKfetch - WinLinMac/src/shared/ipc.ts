@@ -1,7 +1,7 @@
 // Contract between the main process and the renderer.
 import type { PasswordError } from './keys'
 import type {
-  AddContactResult, BlockedView, ContactView, GroupView, MessageView, NetDiagnostics, NetStatus, OutgoingRequestView, ProbeResult, ProfileView, RequestView, SendResult, TransferProgress
+  AddContactResult, BlockedView, ChatFlags, ContactView, GroupView, MessageView, NetDiagnostics, NetStatus, OutgoingRequestView, ProbeResult, ProfileView, RequestView, SendResult, TransferProgress
 } from './model'
 
 export interface Settings {
@@ -11,6 +11,8 @@ export interface Settings {
   custom_flags: Record<string, boolean>
   language: 'cs' | 'en'
   font_size: number
+  /** Font of the message bubbles: 'mono' (Cascadia Code, as before) or 'sans' (the system font). */
+  message_font: 'mono' | 'sans'
   window_bounds: { x?: number; y?: number; width: number; height: number; maximized: boolean } | null
   /** Storage folder chosen by the user; null = default for the system. */
   storage_path: string | null
@@ -47,7 +49,7 @@ export type CoreEvent =
   | { type: 'typing'; chatId: string; pub: string }
   | { type: 'net'; status: NetStatus }
   | { type: 'transfer'; progress: TransferProgress }
-  | { type: 'incoming'; chatId: string; title: string; text: string }
+  | { type: 'incoming'; chatId: string; title: string; text: string; muted?: boolean }
   | { type: 'request'; title: string }
 
 export type UiEvent =
@@ -162,6 +164,8 @@ export interface OkfetchApi {
   cancelFile(chatId: string, id: string): Promise<boolean>
   /** A transfer that waits for the peer: connect now, and go on from where it stopped. */
   retryFile(chatId: string, id: string): Promise<boolean>
+  /** Mute or pin a contact or a group (given by its chat id). */
+  setChatFlags(chatId: string, flags: ChatFlags): Promise<boolean>
   openFile(chatId: string, id: string): Promise<void>
   showFile(chatId: string, id: string): Promise<void>
   /** Android: copy a received file to Downloads. */
@@ -195,7 +199,7 @@ export const API_METHODS = [
   'renameContact', 'setContactIcon', 'verifyContact', 'getFingerprint', 'removeContact',
   'listGroups', 'createGroup', 'updateGroup', 'leaveGroup', 'acceptInvite', 'declineInvite',
   'getMessages', 'sendMessage', 'sendTyping', 'markRead', 'deleteMessages', 'sendFile', 'sendPrepared', 'acceptFile', 'rejectFile', 'cancelFile', 'retryFile', 'openFile', 'showFile',
-  'saveFile', 'shareFile', 'openExternal', 'copyText', 'getSettings', 'updateSettings', 'createBackup', 'restoreBackup', 'resetData'
+  'saveFile', 'shareFile', 'openExternal', 'copyText', 'getSettings', 'updateSettings', 'createBackup', 'restoreBackup', 'resetData', 'setChatFlags'
 ] as const
 
 export type ApiMethod = (typeof API_METHODS)[number]

@@ -135,7 +135,8 @@ export class MessageService {
       type: 'incoming',
       chatId,
       title: this.core.nameOf(peer.pub, isGroupChat(chatId) ? chatId.slice(2) : undefined),
-      text: view.broken ? '' : plainText(view.html).slice(0, 160)
+      text: view.broken ? '' : plainText(view.html).slice(0, 160),
+      muted: this.core.chatMuted(chatId)
     })
     return true
   }
